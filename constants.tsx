@@ -1,8 +1,11 @@
 
 import { Card, CardType } from './types';
 
-// Hwatu 이미지 에셋 경로 (theeluwin/hwatupedia 저장소 기준)
-const BASE_URL = "https://raw.githubusercontent.com/theeluwin/hwatupedia/master/images/";
+/**
+ * 이미지 로딩 안정성을 위해 전 세계 어디서나 접속 가능한 JSDelivr CDN을 사용합니다.
+ * 소스: theeluwin/hwatupedia 오픈소스 화투 에셋
+ */
+const BASE_URL = "https://cdn.jsdelivr.net/gh/theeluwin/hwatupedia@master/images/";
 export const HWATU_BACK_IMAGE = `${BASE_URL}back.png`;
 
 const createCard = (id: number, month: number, index: number, type: CardType): Card => ({
