@@ -6,6 +6,9 @@ export interface Card {
   month: number;
   type: CardType;
   image: string;
+  altImage?: string; // 대체 이미지 소스
+  name: string;      // 1월 송학, 3월 사쿠라 등
+  color: string;     // 월별 대표 색상
 }
 
 export interface Player {
@@ -23,15 +26,8 @@ export interface GameRoom {
   hostId: string;
   status: 'waiting' | 'playing' | 'finished';
   players: Record<string, Player>;
-  turn: string; // uid of current player
+  turn: string;
   deck: Card[];
   field: Card[];
   lastUpdate: number;
-}
-
-export interface UserProfile {
-  uid: string;
-  displayName: string;
-  email: string;
-  photoURL: string;
 }
