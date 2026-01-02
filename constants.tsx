@@ -1,9 +1,11 @@
 
 import { Card, CardType } from './types';
 
-// 프로젝트 루트에 업로드된 로컬 이미지 파일들을 사용합니다.
-// 파일명은 1.png, 2.png ... 48.png 형태입니다.
-export const HWATU_BACK_IMAGE = "back.png"; // 뒷면 이미지가 있다면 사용
+/**
+ * 사용자가 업로드한 1.png ~ 48.png 및 back.png 파일을 사용합니다.
+ * 브라우저 환경에서 루트 디렉토리의 파일을 참조하도록 경로를 설정합니다.
+ */
+export const HWATU_BACK_IMAGE = "./back.png";
 
 const MONTH_DATA: Record<number, { name: string, color: string }> = {
   1: { name: '송학', color: '#e74c3c' },
@@ -21,6 +23,7 @@ const MONTH_DATA: Record<number, { name: string, color: string }> = {
 };
 
 const getCardType = (month: number, index: number): CardType => {
+  // index는 1~4 기준
   if ([1, 3, 8, 11, 12].includes(month) && index === 1) return 'Kwang';
   if (month === 11 && index === 2) return 'SsangPi';
   if (month === 12 && index === 4) return 'SsangPi';
@@ -32,9 +35,10 @@ const getCardType = (month: number, index: number): CardType => {
 };
 
 export const INITIAL_DECK: Card[] = [];
+// 1월부터 12월까지 각 4장씩 총 48장 생성
 for (let m = 1; m <= 12; m++) {
   for (let i = 1; i <= 4; i++) {
-    const id = (m - 1) * 4 + i; // 1부터 48까지 생성
+    const id = (m - 1) * 4 + i; // 1 ~ 48
     const type = getCardType(m, i);
     INITIAL_DECK.push({
       id,
@@ -42,9 +46,8 @@ for (let m = 1; m <= 12; m++) {
       type,
       name: MONTH_DATA[m].name,
       color: MONTH_DATA[m].color,
-      // 업로드된 파일명 규칙(1.png, 2.png...)에 맞게 경로 설정
-      image: `${id}.png`,
-      altImage: `${id}.png` 
+      // 업로드된 파일명 1.png, 2.png ... 48.png 에 맞춰 경로 설정
+      image: `./${id}.png`
     });
   }
 }
