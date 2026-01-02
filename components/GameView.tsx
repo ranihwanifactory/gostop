@@ -104,10 +104,10 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       const opponentId = Object.keys(room.players).find(id => id !== user.uid);
       const opponent = opponentId ? room.players[opponentId] : null;
 
-      const prompt = `맞고 게임 마스터로서 조언해줘. 한국어로 2문장 이내로 짧게 조언해.
-내 패(월): ${(me.hand || []).map(c => c.month).join(', ')}
-바닥 패(월): ${(room.field || []).map(c => c.month).join(', ')}
-내 점수: ${me.score}, 상대 점수: ${opponent?.score || 0}`;
+      const prompt = `당신은 화투(맞고) 마스터입니다. 현재 내 패와 바닥의 상황을 보고 전략을 한국어로 2문장 내외로 조언해 주세요.
+내 패(월별): ${(me.hand || []).map(c => c.month).join(', ')}
+바닥 패(월별): ${(room.field || []).map(c => c.month).join(', ')}
+점수 - 나: ${me.score}, 상대: ${opponent?.score || 0}`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
@@ -115,7 +115,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       });
       setAiAdvice(response.text);
     } catch (error) {
-      setAiAdvice('지금은 분석이 어렵습니다. 자신의 감을 믿으세요!');
+      setAiAdvice('현재 분석이 어렵습니다. 자신의 감각을 믿고 진행하세요!');
     } finally {
       setIsAiLoading(false);
     }
@@ -213,10 +213,10 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
 
   if (loading || !room) return (
     <div className="h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
-      <div className="relative">
-        <i className="fa-solid fa-fan fa-spin text-5xl text-red-600"></i>
+      <div className="relative mb-4">
+        <i className="fa-solid fa-spinner fa-spin text-5xl text-red-600"></i>
       </div>
-      <p className="mt-4 text-neutral-400 font-medium">대결 정보를 불러오는 중...</p>
+      <p className="text-neutral-400 font-bold tracking-widest animate-pulse">데이터 로딩 중...</p>
     </div>
   );
 
@@ -229,80 +229,85 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
 
   return (
     <div className="h-screen w-screen bg-[#0f172a] flex flex-col overflow-hidden select-none">
-      <div className="p-4 flex items-center justify-between bg-black/40 backdrop-blur-md border-b border-white/5 z-50">
-        <button onClick={onLeave} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition">
+      {/* Header */}
+      <div className="p-4 flex items-center justify-between bg-black/60 backdrop-blur-md border-b border-white/5 z-50">
+        <button onClick={onLeave} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition shadow-inner">
           <i className="fa-solid fa-chevron-left text-sm"></i>
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-xs font-bold text-red-500 uppercase tracking-tighter">{room.name}</span>
+          <span className="text-xs font-black text-red-600 uppercase tracking-widest drop-shadow-md">{room.name}</span>
           <div className="flex items-center gap-2 mt-1">
-             <div className={`w-2 h-2 rounded-full animate-pulse ${room.status === 'playing' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-             <span className="text-[10px] font-bold text-white/40 uppercase">{room.status}</span>
+             <div className={`w-2 h-2 rounded-full ${room.turn === user.uid ? 'bg-green-500 animate-pulse' : 'bg-white/20'}`}></div>
+             <span className={`text-[10px] font-bold uppercase ${room.turn === user.uid ? 'text-green-400' : 'text-white/40'}`}>
+               {room.turn === user.uid ? '나의 차례' : '상대 차례'}
+             </span>
           </div>
         </div>
         <button 
           onClick={getAiStrategyHint}
           disabled={room.turn !== user.uid || isAiLoading}
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition ${room.turn === user.uid ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'bg-white/5 text-white/20'}`}
+          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${room.turn === user.uid ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 hover:scale-110 active:scale-95' : 'bg-white/5 text-white/10'}`}
         >
-          <i className={`fa-solid fa-lightbulb ${isAiLoading ? 'animate-bounce' : ''}`}></i>
+          <i className={`fa-solid fa-brain ${isAiLoading ? 'animate-pulse' : ''}`}></i>
         </button>
       </div>
 
       {room.status === 'waiting' ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-12 game-board">
           <div className="flex items-center gap-12 md:gap-24">
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-6 group">
               <div className="relative">
-                <img src={room.players[room.hostId]?.photo} className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border-4 border-red-600 shadow-2xl object-cover" alt="host" />
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">Host</div>
+                <div className="absolute inset-0 bg-red-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                <img src={room.players[room.hostId]?.photo} className="w-24 h-24 md:w-36 md:h-36 rounded-3xl border-4 border-red-600 shadow-2xl object-cover relative z-10" alt="host" />
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest z-20 shadow-lg">Host</div>
               </div>
-              <span className="font-bold text-lg">{room.players[room.hostId]?.name}</span>
+              <span className="font-black text-xl text-white/90 drop-shadow-lg">{room.players[room.hostId]?.name}</span>
             </div>
-            <div className="text-4xl md:text-6xl font-black italic text-white/20">VS</div>
-            <div className="flex flex-col items-center gap-4">
+            <div className="text-4xl md:text-7xl font-black italic text-white/5 select-none">VERSUS</div>
+            <div className="flex flex-col items-center gap-6 group">
               {opponent ? (
-                <div className="flex flex-col items-center gap-4">
+                <>
                   <div className="relative">
-                    <img src={opponent.photo} className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border-4 border-blue-600 shadow-2xl object-cover" alt="opponent" />
-                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-blue-600 text-[10px] font-black px-3 py-1 rounded-full uppercase">Guest</div>
+                    <div className="absolute inset-0 bg-blue-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                    <img src={opponent.photo} className="w-24 h-24 md:w-36 md:h-36 rounded-3xl border-4 border-blue-600 shadow-2xl object-cover relative z-10" alt="opponent" />
+                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-blue-600 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest z-20 shadow-lg">Guest</div>
                   </div>
-                  <span className="font-bold text-lg">{opponent.name}</span>
-                </div>
+                  <span className="font-black text-xl text-white/90 drop-shadow-lg">{opponent.name}</span>
+                </>
               ) : (
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border-4 border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center text-white/20">
-                    <i className="fa-solid fa-user-plus text-2xl mb-2"></i>
+                  <div className="w-24 h-24 md:w-36 md:h-36 rounded-3xl border-4 border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center text-white/20 animate-pulse">
+                    <i className="fa-solid fa-user-plus text-3xl mb-3"></i>
                     <span className="text-[10px] font-bold uppercase tracking-widest">Waiting</span>
                   </div>
-                  <span className="text-white/20 font-bold">상대 대기 중</span>
+                  <span className="text-white/10 font-bold uppercase tracking-tighter">참가자 대기 중</span>
                 </div>
               )}
             </div>
           </div>
           {room.hostId === user.uid && opponent && (
-            <button onClick={handleStartGame} className="px-12 py-4 bg-red-600 hover:bg-red-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-red-900/40 transition-all hover:scale-105 active:scale-95">
-              대결 시작하기
+            <button onClick={handleStartGame} className="px-16 py-5 bg-red-600 hover:bg-red-700 text-white font-black text-2xl rounded-2xl shadow-2xl shadow-red-900/50 transition-all hover:scale-105 active:scale-95 flex items-center gap-4">
+              <i className="fa-solid fa-play"></i> 대결 시작
             </button>
           )}
         </div>
       ) : room.status === 'finished' ? (
         <div className="flex-1 flex flex-col items-center justify-center game-board">
-           <div className="bg-black/60 p-12 rounded-[3rem] backdrop-blur-xl border border-white/10 text-center shadow-2xl">
-              <h2 className="text-5xl font-black text-red-500 italic mb-8">대결 종료</h2>
-              <div className="flex gap-8 mb-10">
-                 <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-bold text-white/40 uppercase">나의 점수</span>
-                    <span className="text-4xl font-black text-white">{me?.score || 0}</span>
+           <div className="bg-black/80 p-12 rounded-[4rem] backdrop-blur-2xl border border-white/10 text-center shadow-[0_0_100px_rgba(220,38,38,0.3)] animate-in zoom-in duration-500">
+              <h2 className="text-6xl font-black text-red-600 italic mb-10 tracking-tighter">대결 종료</h2>
+              <div className="flex gap-12 mb-12">
+                 <div className="flex flex-col gap-3">
+                    <span className="text-xs font-black text-white/30 uppercase tracking-widest">나의 최종 점수</span>
+                    <span className="text-6xl font-black text-blue-500 drop-shadow-lg">{me?.score || 0}</span>
                  </div>
-                 <div className="w-px h-12 bg-white/10 self-center"></div>
-                 <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-bold text-white/40 uppercase">상대 점수</span>
-                    <span className="text-4xl font-black text-white">{opponent?.score || 0}</span>
+                 <div className="w-px h-20 bg-white/10 self-center"></div>
+                 <div className="flex flex-col gap-3">
+                    <span className="text-xs font-black text-white/30 uppercase tracking-widest">상대 최종 점수</span>
+                    <span className="text-6xl font-black text-red-500 drop-shadow-lg">{opponent?.score || 0}</span>
                  </div>
               </div>
-              <button onClick={handleStartGame} className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-neutral-200 transition active:scale-95">
-                다시 한판 더!
+              <button onClick={handleStartGame} className="w-full py-5 bg-white text-black font-black text-xl rounded-2xl hover:bg-neutral-200 transition-all active:scale-95 shadow-xl">
+                복수혈전 (다시 시작)
               </button>
            </div>
         </div>
@@ -310,112 +315,124 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         <div className="flex-1 flex flex-col justify-between p-2 relative game-board">
           {aiAdvice && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-[90%] max-w-md">
-              <div className="bg-indigo-950/90 backdrop-blur-2xl border border-indigo-500/50 p-6 rounded-3xl shadow-2xl animate-in zoom-in duration-300">
-                <div className="flex items-center gap-3 mb-3">
-                   <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs">
-                     <i className="fa-solid fa-brain"></i>
+              <div className="bg-neutral-900/90 backdrop-blur-3xl border border-indigo-500/50 p-8 rounded-[2.5rem] shadow-2xl animate-in fade-in zoom-in duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                   <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-lg">
+                     <i className="fa-solid fa-brain text-sm"></i>
                    </div>
-                   <span className="text-xs font-black text-indigo-300 uppercase">AI Advisor</span>
+                   <span className="text-sm font-black text-indigo-400 uppercase tracking-widest">Master Advisor</span>
                 </div>
-                <p className="text-white text-lg leading-relaxed font-medium">{aiAdvice}</p>
-                <button onClick={() => setAiAdvice(null)} className="mt-4 w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition">닫기</button>
+                <p className="text-white text-xl leading-relaxed font-bold">{aiAdvice}</p>
+                <button onClick={() => setAiAdvice(null)} className="mt-8 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-black rounded-xl transition-colors shadow-lg shadow-indigo-900/30">조언 닫기</button>
               </div>
             </div>
           )}
 
-          <div className="flex justify-between items-start p-2 h-[20%]">
-             <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-3 bg-black/30 p-2 rounded-2xl border border-white/5 pr-4">
-                  <img src={opponent?.photo} className="w-10 h-10 rounded-xl object-cover border-2 border-red-500/50" alt="opp" />
+          {/* Opponent Area */}
+          <div className="flex justify-between items-start p-2 h-[22%]">
+             <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 bg-black/40 p-2.5 rounded-2xl border border-white/5 pr-5 backdrop-blur-sm">
+                  <img src={opponent?.photo} className="w-10 h-10 rounded-xl object-cover border-2 border-red-500/50 shadow-md" alt="opponent" />
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-white/40">{opponent?.name}</span>
-                    <span className="text-xl font-black text-red-500 leading-none">{opponent?.score || 0} <span className="text-[10px]">점</span></span>
+                    <span className="text-[10px] font-bold text-white/40 truncate max-w-[80px]">{opponent?.name}</span>
+                    <span className="text-2xl font-black text-red-600 leading-none">{opponent?.score || 0} <span className="text-xs opacity-60">P</span></span>
                   </div>
                 </div>
              </div>
              
-             <div className="flex -space-x-6 md:-space-x-8">
+             <div className="flex -space-x-8 md:-space-x-12">
                 {(opponent?.hand || []).map((_, i) => (
-                  <div key={i} className="w-10 h-14 md:w-14 md:h-20 hwatu-card shadow-lg rotate-180 overflow-hidden relative">
-                     <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover" alt="back" />
+                  <div key={i} className="w-12 h-18 md:w-16 md:h-24 hwatu-card shadow-2xl rotate-180 overflow-hidden relative border border-black/40 transform -translate-y-2">
+                     <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover" alt="card back" />
                   </div>
                 ))}
              </div>
              
-             <div className="w-32 h-full grid grid-cols-4 gap-0.5 bg-black/20 rounded-xl p-1 overflow-y-auto scrollbar-hide">
-                {opponent?.captured?.map((c, i) => <img key={i} src={c.image} className="w-full h-auto rounded-[1px]" alt="cap" />)}
+             <div className="w-32 h-full grid grid-cols-4 gap-0.5 bg-black/30 rounded-2xl p-1.5 overflow-y-auto scrollbar-hide border border-white/5">
+                {opponent?.captured?.map((c, i) => <img key={i} src={c.image} className="w-full h-auto rounded-[1px] shadow-sm" alt="captured" />)}
              </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center py-4">
-             <div className="w-full max-w-4xl bg-black/10 rounded-[4rem] p-8 md:p-12 border border-white/5 flex flex-wrap items-center justify-center gap-2 md:gap-4 relative">
+          {/* Table Center */}
+          <div className="flex-1 flex flex-col items-center justify-center py-6">
+             <div className="w-full max-w-5xl bg-black/10 rounded-[5rem] p-10 md:p-16 border border-white/5 flex flex-wrap items-center justify-center gap-3 md:gap-5 relative shadow-[inset_0_0_80px_rgba(0,0,0,0.5)]">
                 {(room.field || []).map((c) => (
-                  <div key={c.id} className="w-10 h-15 md:w-16 md:h-24 lg:w-20 lg:h-30 transform transition-transform hover:scale-110">
-                    <img src={c.image} className="w-full h-full rounded-md shadow-2xl border border-white/10 card-shadow" alt="field" />
+                  <div key={c.id} className="w-11 h-17 md:w-20 md:h-30 lg:w-24 lg:h-36 transform transition-all duration-300 hover:scale-110 hover:-translate-y-2">
+                    <img src={c.image} className="w-full h-full rounded-md shadow-2xl border border-white/10 card-shadow object-cover" alt="field card" />
                   </div>
                 ))}
                 
-                <div className="absolute top-1/2 left-4 -translate-y-1/2 flex flex-col items-center">
-                    <div className="w-10 h-14 md:w-16 md:h-24 hwatu-card shadow-[0_10px_0_#450a0a] border border-black/50 overflow-hidden relative">
-                       <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover opacity-50" alt="deck" />
+                {/* Deck Pile */}
+                <div className="absolute top-1/2 left-6 -translate-y-1/2 flex flex-col items-center group">
+                    <div className="w-12 h-18 md:w-20 md:h-30 hwatu-card shadow-[0_12px_0_#3e0a0a] border border-black/60 overflow-hidden relative group-hover:scale-105 transition-transform">
+                       <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover opacity-60" alt="deck back" />
+                       <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-2xl font-black text-white/50">{room.deck?.length || 0}</span>
+                       </div>
                     </div>
-                    <span className="text-[8px] font-bold text-white/20 mt-3 uppercase tracking-widest">{room.deck?.length || 0} LEFT</span>
+                    <span className="text-[10px] font-black text-white/10 mt-5 uppercase tracking-[0.3em]">Deck</span>
                 </div>
              </div>
           </div>
 
-          <div className="p-2 h-[35%] flex flex-col justify-end gap-4">
-             <div className="flex justify-between items-end gap-4">
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3 bg-black/30 p-2 rounded-2xl border border-white/5 pr-4">
-                        <img src={me?.photo} className="w-12 h-12 rounded-xl object-cover border-2 border-blue-500/50" alt="me" />
+          {/* Player Area */}
+          <div className="p-2 h-[38%] flex flex-col justify-end gap-5">
+             <div className="flex justify-between items-end gap-6">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-4 bg-black/40 p-3 rounded-2xl border border-white/10 pr-6 backdrop-blur-sm shadow-xl">
+                        <img src={me?.photo} className="w-14 h-14 rounded-xl object-cover border-2 border-blue-500/50 shadow-md" alt="me" />
                         <div className="flex flex-col">
-                            <span className="text-2xl font-black text-blue-500 leading-none">{me?.score || 0} <span className="text-xs">점</span></span>
+                            <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Score</span>
+                            <span className="text-3xl font-black text-blue-500 leading-none">{me?.score || 0} <span className="text-sm">P</span></span>
                         </div>
                     </div>
                 </div>
 
+                {/* Hand */}
                 <div className="flex-1 flex justify-center items-end px-4">
-                   <div className="flex gap-1 md:gap-2 max-w-full overflow-x-auto pb-4 scrollbar-hide">
+                   <div className="flex gap-1.5 md:gap-3 max-w-full overflow-x-auto pb-6 scrollbar-hide">
                       {(me?.hand || []).map(c => (
                         <button 
                           key={c.id} 
                           onClick={() => handleCardPlay(c)}
                           disabled={room.turn !== user.uid || isProcessing}
-                          className={`group relative transition-all duration-300 transform shrink-0 ${room.turn === user.uid ? 'hover:-translate-y-12 z-50 cursor-pointer' : 'opacity-40 grayscale-[0.5]'}`}
+                          className={`group relative transition-all duration-300 transform shrink-0 ${room.turn === user.uid ? 'hover:-translate-y-16 z-50 cursor-pointer active:scale-95' : 'opacity-30 grayscale-[0.8]'}`}
                         >
-                          <img src={c.image} className="w-14 h-21 md:w-20 md:h-30 lg:w-24 lg:h-36 rounded-xl shadow-2xl border border-white/10 group-hover:ring-4 ring-yellow-400" alt="hand" />
+                          <img src={c.image} className="w-14 h-21 md:w-24 md:h-36 lg:w-28 lg:h-42 rounded-xl shadow-2xl border border-white/10 group-hover:ring-4 ring-yellow-400 group-hover:shadow-[0_0_30px_rgba(250,204,21,0.4)]" alt="hand card" />
+                          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black text-yellow-400 uppercase tracking-widest hidden md:block">내기</div>
                         </button>
                       ))}
                    </div>
                 </div>
 
-                <div className="w-48 md:w-72 h-32 bg-black/40 rounded-3xl border border-white/10 p-3 flex flex-col gap-2 overflow-hidden backdrop-blur-md">
-                    <div className="flex gap-2 h-1/2">
-                       <div className="flex-1 bg-white/5 rounded-xl p-1 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide">
-                           <span className="w-full text-[8px] font-bold text-yellow-500 uppercase px-1">광</span>
-                           {myCaptured.kwang.map((c, i) => <img key={i} src={c.image} className="w-4 h-6 rounded-[1px]" alt="kw" />)}
+                {/* Captured Cards */}
+                <div className="w-56 md:w-80 h-36 bg-black/50 rounded-3xl border border-white/5 p-4 flex flex-col gap-2.5 overflow-hidden backdrop-blur-2xl shadow-inner">
+                    <div className="flex gap-2.5 h-1/2">
+                       <div className="flex-1 bg-white/5 rounded-2xl p-1.5 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide border border-white/5">
+                           <span className="w-full text-[9px] font-black text-yellow-500 uppercase px-1 mb-1 tracking-widest opacity-60">광</span>
+                           {myCaptured.kwang.map((c, i) => <img key={i} src={c.image} className="w-5 h-7 rounded-[1px] shadow-sm" alt="kwang" />)}
                        </div>
-                       <div className="flex-1 bg-white/5 rounded-xl p-1 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide">
-                           <span className="w-full text-[8px] font-bold text-red-400 uppercase px-1">열끗</span>
-                           {myCaptured.yul.map((c, i) => <img key={i} src={c.image} className="w-4 h-6 rounded-[1px]" alt="yul" />)}
+                       <div className="flex-1 bg-white/5 rounded-2xl p-1.5 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide border border-white/5">
+                           <span className="w-full text-[9px] font-black text-red-400 uppercase px-1 mb-1 tracking-widest opacity-60">열</span>
+                           {myCaptured.yul.map((c, i) => <img key={i} src={c.image} className="w-5 h-7 rounded-[1px] shadow-sm" alt="yul" />)}
                        </div>
                     </div>
-                    <div className="flex gap-2 h-1/2">
-                       <div className="flex-1 bg-white/5 rounded-xl p-1 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide">
-                           <span className="w-full text-[8px] font-bold text-blue-400 uppercase px-1">띠</span>
-                           {myCaptured.tti.map((c, i) => <img key={i} src={c.image} className="w-4 h-6 rounded-[1px]" alt="tti" />)}
+                    <div className="flex gap-2.5 h-1/2">
+                       <div className="flex-1 bg-white/5 rounded-2xl p-1.5 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide border border-white/5">
+                           <span className="w-full text-[9px] font-black text-blue-400 uppercase px-1 mb-1 tracking-widest opacity-60">띠</span>
+                           {myCaptured.tti.map((c, i) => <img key={i} src={c.image} className="w-5 h-7 rounded-[1px] shadow-sm" alt="tti" />)}
                        </div>
-                       <div className="flex-1 bg-white/5 rounded-xl p-1 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide">
-                           <span className="w-full text-[8px] font-bold text-green-400 uppercase px-1">피</span>
-                           {myCaptured.pi.map((c, i) => <img key={i} src={c.image} className="w-4 h-6 rounded-[1px]" alt="pi" />)}
+                       <div className="flex-1 bg-white/5 rounded-2xl p-1.5 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide border border-white/5">
+                           <span className="w-full text-[9px] font-black text-green-400 uppercase px-1 mb-1 tracking-widest opacity-60">피</span>
+                           {myCaptured.pi.map((c, i) => <img key={i} src={c.image} className="w-5 h-7 rounded-[1px] shadow-sm" alt="pi" />)}
                        </div>
                     </div>
                 </div>
              </div>
              
-             <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                <div className={`h-full transition-all duration-500 ${room.turn === user.uid ? 'w-full bg-blue-500' : 'w-0 bg-red-500'}`}></div>
+             {/* Progress/Turn indicator */}
+             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
+                <div className={`h-full transition-all duration-700 ease-out ${room.turn === user.uid ? 'w-full bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)]' : 'w-0 bg-red-600'}`}></div>
              </div>
           </div>
         </div>
