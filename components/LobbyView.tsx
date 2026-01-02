@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-// Fix: Correcting the signOut import from firebase/auth
+// Fix: Use standard modular import for signOut
 import { signOut } from 'firebase/auth';
-import { ref, onValue, push, set, off } from 'firebase/database';
+import { ref, onValue, push, set } from 'firebase/database';
 import { auth, db } from '../firebase';
 import { GameRoom } from '../types';
 
@@ -29,7 +29,8 @@ const LobbyView: React.FC<LobbyViewProps> = ({ user }) => {
         setRooms([]);
       }
     });
-    return () => off(roomsRef, 'value', unsubscribe as any);
+    
+    return () => unsubscribe();
   }, []);
 
   const handleCreateRoom = async () => {

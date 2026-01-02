@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, update, runTransaction, off } from 'firebase/database';
+import { ref, onValue, update, runTransaction } from 'firebase/database';
 import { db } from '../firebase';
 import { GameRoom, Card } from '../types';
 import { INITIAL_DECK, HWATU_BACK_IMAGE } from '../constants';
-// Fix: Correct import for Google GenAI SDK
+// Correct import for Google GenAI SDK
 import { GoogleGenAI } from "@google/genai";
 
 interface GameViewProps {
@@ -67,14 +67,16 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         });
       }
     });
-    return () => off(roomRef, 'value', unsubscribe as any);
+    
+    return () => unsubscribe();
   }, [roomId, user.uid, onLeave, user.displayName, user.photoURL]);
 
-  // Fix: Adding Gemini AI Matgo Strategy Advisor
+  // Fix: Gemini API Strategy Advisor following strict GenAI SDK guidelines
   const getAiStrategyHint = async () => {
     if (!room || room.status !== 'playing' || room.turn !== user.uid || isAiLoading) return;
     setIsAiLoading(true);
     try {
+      // Correct initialization using named parameter and direct process.env.API_KEY
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const me = room.players[user.uid];
       const opponentId = Object.keys(room.players).find(id => id !== user.uid);
@@ -91,6 +93,7 @@ Provide advice on what card months to prioritize for matching or what to watch o
         model: 'gemini-3-pro-preview',
         contents: prompt,
       });
+      // Directly access .text property from GenerateContentResponse
       setAiAdvice(response.text);
     } catch (error) {
       console.error('Gemini error:', error);

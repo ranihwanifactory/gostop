@@ -1,6 +1,5 @@
 
 import { initializeApp } from "firebase/app";
-// Fix: Ensuring correct named exports for Firebase Auth and Database
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 

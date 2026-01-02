@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-// Fix: Correctly importing onAuthStateChanged from firebase/auth modular SDK
+// Fix: Use standard modular import for onAuthStateChanged
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 import AuthView from './components/AuthView';
