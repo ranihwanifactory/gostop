@@ -1,6 +1,5 @@
-
 {
-  "name": "Matgo Master - Pro Hwatu Duel",
+  "name": "고스톱게임",
   "description": "A high-end, real-time multiplayer Matgo (Hwatu) game featuring Firebase authentication, room management, and professional game mechanics.",
   "requestFramePermissions": []
 }
