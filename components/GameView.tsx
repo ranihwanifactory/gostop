@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ref, onValue, update, runTransaction, off } from 'firebase/database';
+import React, { useState, useEffect, useRef } from 'react';
+import { ref, onValue, update, runTransaction } from 'firebase/database';
 import { db } from '../firebase';
 import { GameRoom, Card } from '../types';
 import { INITIAL_DECK, HWATU_BACK_IMAGE } from '../constants';
@@ -30,7 +30,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       const data = snapshot.val();
       
       if (!data) {
-        // 방이 없을 경우 즉시 나가지 않고 잠시 기다려 레이스 컨디션 방지
         if (!initialLoadTimerRef.current && loading) {
             initialLoadTimerRef.current = window.setTimeout(() => {
                 if (!isLeavingRef.current) {
@@ -44,7 +43,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         return;
       }
 
-      // 데이터가 있으면 타이머 클리어
       if (initialLoadTimerRef.current) {
           clearTimeout(initialLoadTimerRef.current);
           initialLoadTimerRef.current = null;
@@ -53,7 +51,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       setRoom({ ...data, id: roomId });
       setLoading(false);
 
-      // 자동 참가 로직
       const currentPlayers = data.players || {};
       if (data.status === 'waiting' && Object.keys(currentPlayers).length < 2 && !currentPlayers[user.uid]) {
         update(roomRef, {
@@ -65,7 +62,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
             captured: [],
             score: 0
           }
-        });
+        }).catch(err => console.error("Update failed", err));
       }
     });
     
@@ -73,7 +70,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         unsubscribe();
         if (initialLoadTimerRef.current) clearTimeout(initialLoadTimerRef.current);
     };
-  }, [roomId, user.uid, onLeave]);
+  }, [roomId, user.uid, onLeave, loading]);
 
   const calculateScore = (captured: Card[] = []) => {
     if (!captured.length) return 0;
@@ -107,11 +104,10 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       const opponentId = Object.keys(room.players).find(id => id !== user.uid);
       const opponent = opponentId ? room.players[opponentId] : null;
 
-      const prompt = `맞고 게임 마스터로서 조언해줘.
+      const prompt = `맞고 게임 마스터로서 조언해줘. 한국어로 2문장 이내로 짧게 조언해.
 내 패(월): ${(me.hand || []).map(c => c.month).join(', ')}
 바닥 패(월): ${(room.field || []).map(c => c.month).join(', ')}
-내 점수: ${me.score}, 상대 점수: ${opponent?.score || 0}
-현재 상황에서 어떤 패를 먼저 내서 바닥의 패를 가져오는 것이 유리할지 한국어로 2문장 이내로 짧고 명확하게 조언해줘.`;
+내 점수: ${me.score}, 상대 점수: ${opponent?.score || 0}`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
@@ -119,7 +115,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       });
       setAiAdvice(response.text);
     } catch (error) {
-      setAiAdvice('지금은 분석이 어렵습니다. 자신의 실력을 믿으세요!');
+      setAiAdvice('지금은 분석이 어렵습니다. 자신의 감을 믿으세요!');
     } finally {
       setIsAiLoading(false);
     }
@@ -166,7 +162,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
 
         if (!me) return current;
 
-        // 1. 패에서 카드 내기
         me.hand = (me.hand || []).filter((c: Card) => c.id !== card.id);
         const matchIdx = field.findIndex(fc => fc.month === card.month);
         if (matchIdx !== -1) {
@@ -175,7 +170,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
           field.push(card);
         }
 
-        // 2. 덱에서 뒤집기
         if (deck.length > 0) {
           const flipped = deck.shift();
           const dMatchIdx = field.findIndex(fc => fc.month === flipped.month);
@@ -189,7 +183,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         me.captured = [...(me.captured || []), ...captured];
         me.score = calculateScore(me.captured);
 
-        // 차례 변경
         const playerIds = Object.keys(players);
         const nextTurn = playerIds.find(id => id !== user.uid) || user.uid;
         
@@ -209,7 +202,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
     }
   };
 
-  // 획득한 패 정렬 헬퍼
   const getGroupedCaptured = (captured: Card[] = []) => {
       return {
           kwang: captured.filter(c => c.type === 'Kwang'),
@@ -223,11 +215,8 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
     <div className="h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
       <div className="relative">
         <i className="fa-solid fa-fan fa-spin text-5xl text-red-600"></i>
-        <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[10px] font-bold">판</span>
-        </div>
       </div>
-      <p className="mt-4 text-neutral-400 font-medium">대결 데이터를 불러오는 중...</p>
+      <p className="mt-4 text-neutral-400 font-medium">대결 정보를 불러오는 중...</p>
     </div>
   );
 
@@ -240,7 +229,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
 
   return (
     <div className="h-screen w-screen bg-[#0f172a] flex flex-col overflow-hidden select-none">
-      {/* HUD 상단 */}
       <div className="p-4 flex items-center justify-between bg-black/40 backdrop-blur-md border-b border-white/5 z-50">
         <button onClick={onLeave} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition">
           <i className="fa-solid fa-chevron-left text-sm"></i>
@@ -320,7 +308,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         </div>
       ) : (
         <div className="flex-1 flex flex-col justify-between p-2 relative game-board">
-          {/* AI 조언 레이어 */}
           {aiAdvice && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-[90%] max-w-md">
               <div className="bg-indigo-950/90 backdrop-blur-2xl border border-indigo-500/50 p-6 rounded-3xl shadow-2xl animate-in zoom-in duration-300">
@@ -328,15 +315,14 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs">
                      <i className="fa-solid fa-brain"></i>
                    </div>
-                   <span className="text-xs font-black text-indigo-300 uppercase">AI Master Advice</span>
+                   <span className="text-xs font-black text-indigo-300 uppercase">AI Advisor</span>
                 </div>
                 <p className="text-white text-lg leading-relaxed font-medium">{aiAdvice}</p>
-                <button onClick={() => setAiAdvice(null)} className="mt-4 w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition">조언 닫기</button>
+                <button onClick={() => setAiAdvice(null)} className="mt-4 w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition">닫기</button>
               </div>
             </div>
           )}
 
-          {/* 상대방 영역 */}
           <div className="flex justify-between items-start p-2 h-[20%]">
              <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3 bg-black/30 p-2 rounded-2xl border border-white/5 pr-4">
@@ -346,65 +332,49 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
                     <span className="text-xl font-black text-red-500 leading-none">{opponent?.score || 0} <span className="text-[10px]">점</span></span>
                   </div>
                 </div>
-                {/* 상대방 획득패 (작게) */}
-                <div className="flex gap-1 overflow-x-auto scrollbar-hide max-w-[200px]">
-                   {opponent?.captured && opponent.captured.length > 0 && opponent.captured.map((c, i) => (
-                       <img key={i} src={c.image} className="w-4 h-6 rounded-[1px]" alt="cap" />
-                   ))}
-                </div>
              </div>
              
              <div className="flex -space-x-6 md:-space-x-8">
                 {(opponent?.hand || []).map((_, i) => (
-                  <div key={i} className="w-10 h-14 md:w-14 md:h-20 bg-red-900 rounded-sm border border-black/40 shadow-lg rotate-180 overflow-hidden relative">
-                     <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover opacity-80" alt="back" />
+                  <div key={i} className="w-10 h-14 md:w-14 md:h-20 hwatu-card shadow-lg rotate-180 overflow-hidden relative">
+                     <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover" alt="back" />
                   </div>
                 ))}
              </div>
              
-             {/* 상대 획득패 상세 그리드 */}
              <div className="w-32 h-full grid grid-cols-4 gap-0.5 bg-black/20 rounded-xl p-1 overflow-y-auto scrollbar-hide">
                 {opponent?.captured?.map((c, i) => <img key={i} src={c.image} className="w-full h-auto rounded-[1px]" alt="cap" />)}
              </div>
           </div>
 
-          {/* 바닥 패 (중앙 필드) */}
           <div className="flex-1 flex flex-col items-center justify-center py-4">
              <div className="w-full max-w-4xl bg-black/10 rounded-[4rem] p-8 md:p-12 border border-white/5 flex flex-wrap items-center justify-center gap-2 md:gap-4 relative">
-                {(room.field || []).map((c, i) => (
+                {(room.field || []).map((c) => (
                   <div key={c.id} className="w-10 h-15 md:w-16 md:h-24 lg:w-20 lg:h-30 transform transition-transform hover:scale-110">
                     <img src={c.image} className="w-full h-full rounded-md shadow-2xl border border-white/10 card-shadow" alt="field" />
                   </div>
                 ))}
                 
-                {/* 덱 더미 */}
                 <div className="absolute top-1/2 left-4 -translate-y-1/2 flex flex-col items-center">
-                    <div className="w-10 h-14 md:w-16 md:h-24 bg-red-950 rounded-lg shadow-[0_10px_0_#450a0a] border border-black/50 overflow-hidden relative">
-                       <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover opacity-30" alt="deck" />
-                       <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-xl font-black text-white/40">{room.deck?.length || 0}</span>
-                       </div>
+                    <div className="w-10 h-14 md:w-16 md:h-24 hwatu-card shadow-[0_10px_0_#450a0a] border border-black/50 overflow-hidden relative">
+                       <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover opacity-50" alt="deck" />
                     </div>
-                    <span className="text-[8px] font-bold text-white/20 mt-3 uppercase tracking-widest">Deck</span>
+                    <span className="text-[8px] font-bold text-white/20 mt-3 uppercase tracking-widest">{room.deck?.length || 0} LEFT</span>
                 </div>
              </div>
           </div>
 
-          {/* 나의 영역 */}
           <div className="p-2 h-[35%] flex flex-col justify-end gap-4">
              <div className="flex justify-between items-end gap-4">
-                {/* 내 정보 및 점수 */}
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3 bg-black/30 p-2 rounded-2xl border border-white/5 pr-4">
                         <img src={me?.photo} className="w-12 h-12 rounded-xl object-cover border-2 border-blue-500/50" alt="me" />
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-white/40 uppercase">My Status</span>
                             <span className="text-2xl font-black text-blue-500 leading-none">{me?.score || 0} <span className="text-xs">점</span></span>
                         </div>
                     </div>
                 </div>
 
-                {/* 내 패 (핸드) */}
                 <div className="flex-1 flex justify-center items-end px-4">
                    <div className="flex gap-1 md:gap-2 max-w-full overflow-x-auto pb-4 scrollbar-hide">
                       {(me?.hand || []).map(c => (
@@ -415,17 +385,11 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
                           className={`group relative transition-all duration-300 transform shrink-0 ${room.turn === user.uid ? 'hover:-translate-y-12 z-50 cursor-pointer' : 'opacity-40 grayscale-[0.5]'}`}
                         >
                           <img src={c.image} className="w-14 h-21 md:w-20 md:h-30 lg:w-24 lg:h-36 rounded-xl shadow-2xl border border-white/10 group-hover:ring-4 ring-yellow-400" alt="hand" />
-                          {room.turn === user.uid && (
-                              <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full whitespace-nowrap">
-                                내기
-                              </div>
-                          )}
                         </button>
                       ))}
                    </div>
                 </div>
 
-                {/* 내 획득패 분류 레이아웃 */}
                 <div className="w-48 md:w-72 h-32 bg-black/40 rounded-3xl border border-white/10 p-3 flex flex-col gap-2 overflow-hidden backdrop-blur-md">
                     <div className="flex gap-2 h-1/2">
                        <div className="flex-1 bg-white/5 rounded-xl p-1 flex flex-wrap gap-0.5 overflow-y-auto scrollbar-hide">
@@ -450,7 +414,6 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
                 </div>
              </div>
              
-             {/* 현재 턴 표시바 */}
              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                 <div className={`h-full transition-all duration-500 ${room.turn === user.uid ? 'w-full bg-blue-500' : 'w-0 bg-red-500'}`}></div>
              </div>

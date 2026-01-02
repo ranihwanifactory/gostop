@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
     <title>Matgo Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,12 +20,13 @@
         .hwatu-card {
             aspect-ratio: 2/3;
             perspective: 1000px;
+            background-color: #2a1111; /* 카드 로딩 전 배경색 */
+            border-radius: 4px;
         }
         .game-board {
             background: radial-gradient(circle, #2d5a27 0%, #1e3d1a 100%);
             box-shadow: inset 0 0 150px rgba(0,0,0,0.5);
         }
-        /* 스크롤바 숨기기 */
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -32,16 +34,8 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        /* 카드 그림자 및 효과 */
         .card-shadow {
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-        }
-        @keyframes deal-card {
-            from { transform: translate(-100%, -100%) rotate(-20deg); opacity: 0; }
-            to { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-        }
-        .animate-deal {
-            animation: deal-card 0.3s ease-out forwards;
         }
     </style>
 <script type="importmap">

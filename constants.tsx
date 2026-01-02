@@ -1,15 +1,14 @@
 
-import { Card } from './types';
+import { Card, CardType } from './types';
 
-// Simplified representation of the 48 cards. 
-// In a production app, these would be local assets or URLs to the provided images.
-export const HWATU_BACK_IMAGE = "https://raw.githubusercontent.com/jh90123/hwatu/master/images/back.png";
+// 더 안정적인 이미지 소스로 교체
+export const HWATU_BACK_IMAGE = "https://raw.githubusercontent.com/ga-on/hwatu/master/images/back.png";
 
-const createCard = (id: number, month: number, type: any): Card => ({
+const createCard = (id: number, month: number, type: CardType): Card => ({
   id,
   month,
   type,
-  image: `https://raw.githubusercontent.com/jh90123/hwatu/master/images/${id}.png` // Assuming a standard repository mapping
+  image: `https://raw.githubusercontent.com/ga-on/hwatu/master/images/${id}.png`
 });
 
 export const INITIAL_DECK: Card[] = [
