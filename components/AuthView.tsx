@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-// Fix: Use clean modular imports for Firebase Authentication functions
+// Fix: Consolidate and clarify modular imports for Firebase Authentication functions
 import { 
   signInWithPopup, 
   signInWithEmailAndPassword, 

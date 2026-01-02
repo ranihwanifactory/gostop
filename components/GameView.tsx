@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ref, onValue, update, runTransaction } from 'firebase/database';
 import { db } from '../firebase';
 import { GameRoom, Card } from '../types';
 import { INITIAL_DECK, HWATU_BACK_IMAGE } from '../constants';
-// Correct import for Google GenAI SDK
 import { GoogleGenAI } from "@google/genai";
 
 interface GameViewProps {
@@ -42,69 +41,88 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  
+  // 퇴장 방지를 위한 Ref
+  const isLeavingRef = useRef(false);
 
   useEffect(() => {
+    if (!roomId) return;
     const roomRef = ref(db, `rooms/${roomId}`);
+    
     const unsubscribe = onValue(roomRef, (snapshot) => {
       const data = snapshot.val();
+      
       if (!data) {
-        onLeave();
+        if (!isLeavingRef.current) {
+          isLeavingRef.current = true;
+          onLeave();
+        }
         return;
       }
+
       setRoom({ ...data, id: roomId });
       setLoading(false);
 
-      if (data.status === 'waiting' && Object.keys(data.players || {}).length < 2 && !data.players[user.uid]) {
+      // 플레이어 자동 참가 로직
+      const currentPlayers = data.players || {};
+      if (data.status === 'waiting' && Object.keys(currentPlayers).length < 2 && !currentPlayers[user.uid]) {
         update(roomRef, {
           [`players/${user.uid}`]: {
             uid: user.uid,
-            name: user.displayName || 'Guest',
-            photo: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`,
+            name: user.displayName || user.email?.split('@')[0] || 'Guest',
+            photo: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'G'}`,
             hand: [],
             captured: [],
             score: 0
           }
-        });
+        }).catch(err => console.error("Player join update failed:", err));
+      }
+    }, (error) => {
+      console.error("Game Room Monitor Error:", error);
+      if (!isLeavingRef.current) {
+        isLeavingRef.current = true;
+        onLeave();
       }
     });
     
     return () => unsubscribe();
-  }, [roomId, user.uid, onLeave, user.displayName, user.photoURL]);
+  }, [roomId, user.uid, onLeave, user.displayName, user.email, user.photoURL]);
 
-  // Fix: Gemini API Strategy Advisor following strict GenAI SDK guidelines
   const getAiStrategyHint = async () => {
     if (!room || room.status !== 'playing' || room.turn !== user.uid || isAiLoading) return;
     setIsAiLoading(true);
     try {
-      // Correct initialization using named parameter and direct process.env.API_KEY
+      // Fix: Always initialize GoogleGenAI with process.env.API_KEY before use
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const me = room.players[user.uid];
       const opponentId = Object.keys(room.players).find(id => id !== user.uid);
       const opponent = opponentId ? room.players[opponentId] : null;
 
+      if (!me) throw new Error("Me player data not found");
+
       const prompt = `You are a Matgo (Korean Hwatu game) master. 
-Analyze the current game state and give expert, brief strategy advice in Korean.
-My hand months: ${me.hand.map(c => c.month).join(', ')}
-Field cards months: ${room.field.map(c => c.month).join(', ')}
-My score: ${me.score}, Opponent score: ${opponent?.score || 0}
-Provide advice on what card months to prioritize for matching or what to watch out for. Limit to 2 sentences.`;
+Current game state analysis request.
+My hand months: ${(me.hand || []).map(c => c.month).join(', ') || 'None'}
+Field cards months: ${(room.field || []).map(c => c.month).join(', ') || 'None'}
+My score: ${me.score || 0}, Opponent score: ${opponent?.score || 0}
+Provide advice on what card months to prioritize for matching or what to watch out for in Korean. Limit to 2 clear sentences.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
         contents: prompt,
       });
-      // Directly access .text property from GenerateContentResponse
-      setAiAdvice(response.text);
+      // Fix: Use response.text directly (property, not method)
+      setAiAdvice(response.text || '조언을 생성할 수 없습니다.');
     } catch (error) {
       console.error('Gemini error:', error);
-      setAiAdvice('AI 조언을 가져오는 데 실패했습니다.');
+      setAiAdvice('전략 분석에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsAiLoading(false);
     }
   };
 
   const handleStartGame = async () => {
-    if (!room) return;
+    if (!room || !roomId) return;
     const shuffled = [...INITIAL_DECK].sort(() => Math.random() - 0.5);
     const players = { ...room.players };
     const pIds = Object.keys(players);
@@ -116,15 +134,20 @@ Provide advice on what card months to prioritize for matching or what to watch o
       players[id].score = 0;
     });
 
-    await update(ref(db, `rooms/${roomId}`), {
-      status: 'playing',
-      players,
-      field: shuffled.splice(0, 8),
-      deck: shuffled,
-      turn: room.hostId,
-      lastUpdate: Date.now()
-    });
-    setAiAdvice(null);
+    try {
+      await update(ref(db, `rooms/${roomId}`), {
+        status: 'playing',
+        players,
+        field: shuffled.splice(0, 8),
+        deck: shuffled,
+        turn: room.hostId,
+        lastUpdate: Date.now()
+      });
+      setAiAdvice(null);
+    } catch (error) {
+      console.error("Game Start Error:", error);
+      alert("게임을 시작할 수 없습니다.");
+    }
   };
 
   const handleCardPlay = async (card: Card) => {
@@ -144,7 +167,10 @@ Provide advice on what card months to prioritize for matching or what to watch o
 
         if (!me) return current;
 
+        // 패에서 카드 제거
         me.hand = (me.hand || []).filter((c: Card) => c.id !== card.id);
+        
+        // 필드 매칭
         const matchIdx = field.findIndex(fc => fc.month === card.month);
         if (matchIdx !== -1) {
           captured.push(card, field.splice(matchIdx, 1)[0]);
@@ -152,6 +178,7 @@ Provide advice on what card months to prioritize for matching or what to watch o
           field.push(card);
         }
 
+        // 덱에서 뒤집기
         if (deck.length > 0) {
           const flipped = deck.shift();
           const dMatchIdx = field.findIndex(fc => fc.month === flipped.month);
@@ -182,7 +209,7 @@ Provide advice on what card months to prioritize for matching or what to watch o
         return current;
       });
     } catch (e) {
-      console.error(e);
+      console.error("Play Transaction Error:", e);
     } finally {
       setIsProcessing(false);
     }
@@ -191,12 +218,12 @@ Provide advice on what card months to prioritize for matching or what to watch o
   if (loading || !room) return (
     <div className="h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
       <i className="fa-solid fa-sync fa-spin text-4xl text-red-600 mb-4"></i>
-      <p className="text-xl font-bold">대결 준비 중...</p>
+      <p className="text-xl font-bold">방 입장 중...</p>
     </div>
   );
 
-  const me = room.players[user.uid];
-  const opponentId = Object.keys(room.players).find(id => id !== user.uid);
+  const me = room.players?.[user.uid];
+  const opponentId = Object.keys(room.players || {}).find(id => id !== user.uid);
   const opponent = opponentId ? room.players[opponentId] : null;
 
   return (
@@ -207,7 +234,7 @@ Provide advice on what card months to prioritize for matching or what to watch o
           <i className="fa-solid fa-arrow-left"></i>
         </button>
         <div className="text-center">
-            <h1 className="text-xl font-black italic tracking-tighter text-red-500 uppercase drop-shadow-lg">{room.name}</h1>
+            <h1 className="text-lg md:text-xl font-black italic tracking-tighter text-red-500 uppercase drop-shadow-lg">{room.name}</h1>
             <div className={`text-[10px] font-black px-4 py-1 rounded-full mt-1 ${room.turn === user.uid ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/40'}`}>
                 {room.status === 'playing' ? (room.turn === user.uid ? '나의 차례' : '상대 차례') : '대결 전'}
             </div>
@@ -226,18 +253,20 @@ Provide advice on what card months to prioritize for matching or what to watch o
         <div className="flex-1 flex flex-col items-center justify-center gap-10">
           <div className="flex flex-col md:flex-row items-center gap-10 md:gap-20">
             <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-left-8">
-               <img src={room.players[room.hostId]?.photo} className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-red-600 shadow-2xl object-cover" alt="host" />
-               <div className="font-black text-xl text-white">{room.players[room.hostId]?.name}</div>
+               <img src={room.players[room.hostId]?.photo} className="w-24 h-24 md:w-40 md:h-40 rounded-full border-4 border-red-600 shadow-2xl object-cover" alt="host" />
+               <div className="font-black text-lg md:text-xl text-white">{room.players[room.hostId]?.name}</div>
+               <div className="text-[10px] font-bold text-red-500 uppercase">Host</div>
             </div>
             <div className="text-4xl md:text-7xl font-black italic text-white/5 tracking-widest">VERSUS</div>
             <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-right-8">
                {opponent ? (
                  <>
-                   <img src={opponent.photo} className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-blue-600 shadow-2xl object-cover" alt="opponent" />
-                   <div className="font-black text-xl text-white">{opponent.name}</div>
+                   <img src={opponent.photo} className="w-24 h-24 md:w-40 md:h-40 rounded-full border-4 border-blue-600 shadow-2xl object-cover" alt="opponent" />
+                   <div className="font-black text-lg md:text-xl text-white">{opponent.name}</div>
+                   <div className="text-[10px] font-bold text-blue-500 uppercase">Challenger</div>
                  </>
                ) : (
-                 <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-dashed border-white/10 flex flex-col items-center justify-center bg-white/5">
+                 <div className="w-24 h-24 md:w-40 md:h-40 rounded-full border-4 border-dashed border-white/10 flex flex-col items-center justify-center bg-white/5">
                    <i className="fa-solid fa-user-plus text-white/10 text-3xl mb-2"></i>
                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Waiting</span>
                  </div>
@@ -249,18 +278,21 @@ Provide advice on what card months to prioritize for matching or what to watch o
               대결 시작
             </button>
           )}
+          {room.hostId !== user.uid && !opponent && (
+             <p className="text-white/40 animate-pulse">방장이 대결을 시작할 때까지 기다려주세요...</p>
+          )}
         </div>
       ) : room.status === 'finished' ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
            <h2 className="text-6xl md:text-8xl font-black italic text-red-600 mb-6 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)]">GAME OVER</h2>
            <div className="flex gap-6 md:gap-12 mb-12">
-              <div className="p-8 bg-black/40 rounded-3xl border border-white/5">
+              <div className="p-6 md:p-8 bg-black/40 rounded-3xl border border-white/5">
                  <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-1">나의 점수</div>
-                 <div className="text-5xl font-black text-blue-400">{me?.score || 0}</div>
+                 <div className="text-4xl md:text-5xl font-black text-blue-400">{me?.score || 0}</div>
               </div>
-              <div className="p-8 bg-black/40 rounded-3xl border border-white/5">
+              <div className="p-6 md:p-8 bg-black/40 rounded-3xl border border-white/5">
                  <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-1">상대 점수</div>
-                 <div className="text-5xl font-black text-red-400">{opponent?.score || 0}</div>
+                 <div className="text-4xl md:text-5xl font-black text-red-400">{opponent?.score || 0}</div>
               </div>
            </div>
            <button onClick={handleStartGame} className="bg-white text-black font-black px-16 py-5 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95 shadow-xl text-xl">
@@ -277,7 +309,7 @@ Provide advice on what card months to prioritize for matching or what to watch o
                   <i className="fa-solid fa-brain text-indigo-400"></i>
                   <h3 className="text-indigo-400 font-black text-xs uppercase tracking-widest">Master Advisor</h3>
                 </div>
-                <p className="text-indigo-50 text-lg leading-relaxed">{aiAdvice}</p>
+                <p className="text-indigo-50 text-sm md:text-lg leading-relaxed">{aiAdvice}</p>
                 <button onClick={() => setAiAdvice(null)} className="mt-4 text-[10px] font-bold uppercase text-indigo-400 hover:text-white transition">닫기</button>
               </div>
             </div>
@@ -288,16 +320,16 @@ Provide advice on what card months to prioritize for matching or what to watch o
              <div className="flex gap-4 p-3 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-sm">
                 <img src={opponent?.photo} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-red-500 object-cover shadow-lg" alt="opponent" />
                 <div className="flex flex-col justify-center">
-                   <div className="text-[10px] opacity-40 truncate max-w-[80px] uppercase font-bold">{opponent?.name}</div>
-                   <div className="text-xl font-black text-red-500 leading-none">{opponent?.score || 0} <span className="text-[10px] opacity-60 font-bold">PTS</span></div>
+                   <div className="text-[10px] opacity-40 truncate max-w-[80px] uppercase font-bold">{opponent?.name || 'Opponent'}</div>
+                   <div className="text-lg md:text-xl font-black text-red-500 leading-none">{opponent?.score || 0} <span className="text-[10px] opacity-60 font-bold">PTS</span></div>
                 </div>
              </div>
-             <div className="flex -space-x-8 md:-space-x-10">
+             <div className="flex -space-x-6 md:-space-x-10 overflow-hidden px-4">
                 {(opponent?.hand || []).map((_, i) => (
                   <img key={i} src={HWATU_BACK_IMAGE} className="w-10 h-14 md:w-12 md:h-18 rounded-sm border border-black/50 shadow-lg brightness-75 rotate-180" alt="opponent card" />
                 ))}
              </div>
-             <div className="w-32 md:w-64 h-16 md:h-24 bg-black/30 rounded-2xl grid grid-cols-5 md:grid-cols-6 gap-1 p-2 overflow-y-auto border border-white/5">
+             <div className="w-24 md:w-64 h-16 md:h-24 bg-black/30 rounded-2xl grid grid-cols-4 md:grid-cols-6 gap-1 p-2 overflow-y-auto border border-white/5">
                 {(opponent?.captured || []).map((c, i) => <img key={`${c.id}-${i}`} src={c.image} className="w-full h-auto rounded-[1px] shadow-sm" alt="captured" />)}
              </div>
           </div>
@@ -306,16 +338,16 @@ Provide advice on what card months to prioritize for matching or what to watch o
           <div className="flex-1 flex items-center justify-center relative my-4">
              <div className="w-full max-w-4xl p-6 md:p-12 bg-white/5 rounded-[40px] md:rounded-[80px] border border-white/10 grid grid-cols-4 md:grid-cols-8 gap-3 md:gap-5 place-items-center shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
                 {(room.field || []).map(c => (
-                  <div key={c.id} className="hwatu-card w-12 md:w-16 lg:w-20 hover:scale-110 transition-transform">
+                  <div key={c.id} className="hwatu-card w-10 md:w-16 lg:w-20 hover:scale-110 transition-transform">
                      <img src={c.image} className="w-full h-auto rounded-sm shadow-2xl border border-white/5" alt="field" />
                   </div>
                 ))}
                 {/* Deck Pile */}
-                <div className="relative w-12 h-18 md:w-16 md:h-24 lg:w-20 lg:h-28 bg-red-950 rounded-lg shadow-2xl flex items-center justify-center border-b-8 border-red-950/50 transform hover:scale-105 transition-transform">
+                <div className="relative w-10 h-14 md:w-16 md:h-24 lg:w-20 lg:h-28 bg-red-950 rounded-lg shadow-2xl flex items-center justify-center border-b-8 border-red-950/50 transform hover:scale-105 transition-transform">
                     <img src={HWATU_BACK_IMAGE} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="deck back" />
                     <div className="relative z-10 flex flex-col items-center">
-                      <span className="font-black text-2xl md:text-3xl text-white drop-shadow-2xl">{room.deck?.length || 0}</span>
-                      <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">DECK</span>
+                      <span className="font-black text-xl md:text-3xl text-white drop-shadow-2xl">{room.deck?.length || 0}</span>
+                      <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest hidden md:inline">DECK</span>
                     </div>
                 </div>
              </div>
@@ -327,11 +359,11 @@ Provide advice on what card months to prioritize for matching or what to watch o
                 <img src={me?.photo} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-blue-500 object-cover shadow-lg" alt="me" />
                 <div className="flex flex-col justify-center">
                    <div className="text-[10px] font-bold opacity-40 uppercase">나의 점수</div>
-                   <div className="text-xl font-black text-blue-500 leading-none">{me?.score || 0} <span className="text-[10px] opacity-60 font-bold">PTS</span></div>
+                   <div className="text-lg md:text-xl font-black text-blue-500 leading-none">{me?.score || 0} <span className="text-[10px] opacity-60 font-bold">PTS</span></div>
                 </div>
              </div>
-             <div className="flex-1 flex justify-center items-end px-4">
-                <div className="flex gap-1 md:gap-2 max-w-full overflow-x-auto pb-4 scrollbar-hide">
+             <div className="flex-1 flex justify-center items-end px-2 md:px-4 overflow-x-auto pb-4 scrollbar-hide">
+                <div className="flex gap-1 md:gap-2 max-w-full">
                   {(me?.hand || []).map(c => (
                     <button 
                       key={c.id} 
@@ -339,13 +371,13 @@ Provide advice on what card months to prioritize for matching or what to watch o
                       disabled={room.turn !== user.uid || isProcessing}
                       className={`hwatu-card group relative transition-all duration-300 transform shrink-0 ${room.turn === user.uid ? 'hover:-translate-y-16 hover:scale-125 z-10 cursor-pointer active:scale-95' : 'opacity-60 grayscale-[0.2]'} ${isProcessing ? 'animate-pulse' : ''}`}
                     >
-                      <img src={c.image} className="w-14 md:w-20 lg:w-24 rounded-md shadow-[0_15px_30px_rgba(0,0,0,0.6)] border border-white/10 group-hover:ring-4 ring-yellow-400/30" alt="hand card" />
-                      {room.turn === user.uid && <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-full whitespace-nowrap shadow-xl">PLAY CARD</div>}
+                      <img src={c.image} className="w-12 md:w-20 lg:w-24 rounded-md shadow-[0_15px_30px_rgba(0,0,0,0.6)] border border-white/10 group-hover:ring-4 ring-yellow-400/30" alt="hand card" />
+                      {room.turn === user.uid && <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-full whitespace-nowrap shadow-xl hidden md:block">PLAY CARD</div>}
                     </button>
                   ))}
                 </div>
              </div>
-             <div className="w-32 md:w-64 h-16 md:h-24 bg-black/30 rounded-2xl grid grid-cols-5 md:grid-cols-6 gap-1 p-2 overflow-y-auto border border-white/5">
+             <div className="w-24 md:w-64 h-16 md:h-24 bg-black/30 rounded-2xl grid grid-cols-4 md:grid-cols-6 gap-1 p-2 overflow-y-auto border border-white/5">
                 {(me?.captured || []).map((c, i) => <img key={`${c.id}-${i}`} src={c.image} className="w-full h-auto rounded-[1px] shadow-sm" alt="my captured" />)}
              </div>
           </div>
