@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Go-Stop Master",
+  "description": "A sophisticated 2-player Hanafuda (Go-Stop) game featuring a Gemini-powered AI opponent and real-time score tracking.",
+  "requestFramePermissions": []
+}
