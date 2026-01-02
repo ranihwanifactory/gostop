@@ -1,7 +1,7 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { db } from '../firebase';
-import { ref, set, update, remove } from 'firebase/database';
+import { ref, update, remove } from 'firebase/database';
 import { User } from 'firebase/auth';
 import { GameRoom, PlayerState, CardType } from '../types';
 import { HWATU_CARDS } from '../constants';
@@ -13,10 +13,24 @@ interface GameBoardProps {
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({ room, user }) => {
-  // Fixed: Cast Object.values to PlayerState[] to ensure members are correctly typed
   const players = Object.values(room.players || {}) as PlayerState[];
-  const myState = room.players[user.uid];
+  const myState = room.players ? room.players[user.uid] : null;
   const isHost = room.hostId === user.uid;
+
+  // 플레이어 데이터가 아직 동기화되지 않았거나 방에서 나간 경우 처리
+  if (!myState) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-center">
+        <p className="text-gray-500 mb-4">대국 정보를 불러오는 중입니다...</p>
+        <button 
+          onClick={() => remove(ref(db, `rooms/${room.roomId}/players/${user.uid}`))}
+          className="text-sm text-red-600 underline"
+        >
+          로비로 돌아가기
+        </button>
+      </div>
+    );
+  }
 
   const handleExit = async () => {
     if (isHost) {
@@ -80,11 +94,11 @@ const GameBoard: React.FC<GameBoardProps> = ({ room, user }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       {/* Game Header */}
       <div className="flex justify-between items-center hanji-texture border border-amber-300 p-3 rounded shadow-sm">
         <div className="flex items-center gap-2">
-            <span className="bg-red-800 text-white text-xs px-2 py-1 rounded font-bold">LIVE</span>
+            <span className="bg-red-800 text-white text-xs px-2 py-1 rounded font-bold animate-pulse">LIVE</span>
             <span className="text-sm font-semibold text-amber-900">{room.roomId.slice(-6)}번 대국실</span>
         </div>
         <div className="flex gap-2">
@@ -102,8 +116,8 @@ const GameBoard: React.FC<GameBoardProps> = ({ room, user }) => {
               {p.uid === user.uid && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">나</div>}
               <div className="flex items-center gap-3 mb-2">
                 <img src={p.photoURL || `https://picsum.photos/seed/${p.uid}/40/40`} className="w-10 h-10 rounded-full border border-gray-300" alt={p.name} />
-                <div>
-                  <h3 className="font-bold text-sm truncate w-24">{p.name}</h3>
+                <div className="overflow-hidden">
+                  <h3 className="font-bold text-sm truncate">{p.name}</h3>
                   <p className="text-red-700 font-bold text-xl">{p.score}점</p>
                 </div>
               </div>
@@ -171,7 +185,7 @@ const CardGroup: React.FC<{
             <h4 className="text-sm font-bold text-amber-900 border-b border-amber-100 mb-3 pb-1">{title}</h4>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {cards.map(card => {
-                    const isSelected = selectedCards.includes(card.id);
+                    const isSelected = (selectedCards || []).includes(card.id);
                     return (
                         <button
                             key={card.id}

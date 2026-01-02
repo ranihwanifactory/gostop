@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db, googleProvider } from './firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { ref, onValue, set, remove, update, onDisconnect } from 'firebase/database';
-import { GameRoom, PlayerState } from './types';
+import { ref, onValue } from 'firebase/database';
+import { GameRoom } from './types';
 import RoomManager from './components/RoomManager';
 import GameBoard from './components/GameBoard';
 
@@ -15,25 +15,29 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      setLoading(false);
+      if (!u) {
+        setLoading(false);
+        setCurrentRoom(null);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setCurrentRoom(null);
-      return;
-    }
+    if (!user) return;
 
-    // Check if user is already in a room
-    // For simplicity, we search rooms (in a real app, you'd store the roomId in the user profile)
     const roomsRef = ref(db, 'rooms');
     const unsubscribeRooms = onValue(roomsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const rooms = Object.values(data) as GameRoom[];
+        const rooms = Object.keys(data).map(key => ({
+          ...data[key],
+          roomId: key
+        })) as GameRoom[];
+        
+        // 사용자가 플레이어로 포함된 방 찾기
         const userRoom = rooms.find(r => r.players && r.players[user.uid]);
+        
         if (userRoom) {
           setCurrentRoom(userRoom);
         } else {
@@ -42,6 +46,10 @@ const App: React.FC = () => {
       } else {
         setCurrentRoom(null);
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("Firebase error:", error);
+      setLoading(false);
     });
 
     return () => unsubscribeRooms();
