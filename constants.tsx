@@ -2,10 +2,10 @@
 import { Card, CardType } from './types';
 
 /**
- * 프로젝트 루트에 업로드된 1.png ~ 48.png 및 back.png 파일을 사용합니다.
- * 경로 앞에 /를 붙여 루트 디렉토리임을 명시합니다.
+ * 사용자가 업로드한 1.png ~ 48.png 파일을 사용합니다.
+ * 배포 환경에 따라 도메인 루트가 다를 수 있으므로 상대 경로를 사용합니다.
  */
-export const HWATU_BACK_IMAGE = "/back.png";
+export const HWATU_BACK_IMAGE = "back.png";
 
 const MONTH_DATA: Record<number, { name: string, color: string }> = {
   1: { name: '송학', color: '#e74c3c' },
@@ -23,10 +23,11 @@ const MONTH_DATA: Record<number, { name: string, color: string }> = {
 };
 
 const getCardType = (month: number, index: number): CardType => {
+  // 1 index based
   if ([1, 3, 8, 11, 12].includes(month) && index === 1) return 'Kwang';
   if (month === 11 && index === 2) return 'SsangPi';
   if (month === 12 && index === 4) return 'SsangPi';
-  if (month === 9 && index === 1) return 'Yul';
+  if (month === 9 && index === 1) return 'Yul'; // 국진은 열끗/피 선택 가능하나 기본 열끗 처리
   if (index === 1 && ![1,3,8,11,12].includes(month)) return 'Yul';
   if (index === 2 && month !== 11) return 'Tti';
   if (month === 12 && index === 3) return 'Tti';
@@ -44,7 +45,7 @@ for (let m = 1; m <= 12; m++) {
       type,
       name: MONTH_DATA[m].name,
       color: MONTH_DATA[m].color,
-      image: `/${id}.png` // 절대 경로 사용
+      image: `${id}.png` // 상대 경로 사용
     });
   }
 }
