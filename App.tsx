@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// Fix: Correctly importing onAuthStateChanged from firebase/auth modular SDK
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 import AuthView from './components/AuthView';
@@ -38,7 +39,7 @@ const App: React.FC = () => {
       <div className="flex items-center justify-center h-screen bg-neutral-900">
         <div className="text-center">
           <i className="fa-solid fa-sync fa-spin text-4xl text-red-600 mb-4"></i>
-          <p className="text-xl font-bold">로딩 중...</p>
+          <p className="text-xl font-bold text-white">로딩 중...</p>
         </div>
       </div>
     );

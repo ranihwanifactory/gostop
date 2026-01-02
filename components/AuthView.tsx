@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+// Fix: Ensuring all authentication functions are correctly exported from firebase/auth
 import { 
   signInWithPopup, 
   signInWithEmailAndPassword, 
@@ -44,7 +45,7 @@ const AuthView: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-cover bg-center" style={{backgroundImage: 'url("https://picsum.photos/1600/900?grayscale")'}}>
-      <div className="bg-black/80 p-8 rounded-2xl w-full max-w-md backdrop-blur-md border border-red-900/50 shadow-2xl">
+      <div className="bg-black/80 p-8 rounded-2xl w-full max-w-md backdrop-blur-md border border-red-900/50 shadow-2xl text-white">
         <div className="text-center mb-8">
           <h1 className="text-5xl font-black text-red-600 italic tracking-tighter mb-2">MATGO MASTER</h1>
           <p className="text-neutral-400">최고의 화투 대결을 시작하세요</p>
@@ -64,7 +65,7 @@ const AuthView: React.FC = () => {
                 type="text" 
                 value={displayName} 
                 onChange={e => setDisplayName(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-3 focus:outline-none focus:border-red-600"
+                className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-3 focus:outline-none focus:border-red-600 text-white"
                 placeholder="이름 입력"
                 required
               />
@@ -76,7 +77,7 @@ const AuthView: React.FC = () => {
               type="email" 
               value={email} 
               onChange={e => setEmail(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-3 focus:outline-none focus:border-red-600"
+              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-3 focus:outline-none focus:border-red-600 text-white"
               placeholder="example@mail.com"
               required
             />
@@ -87,7 +88,7 @@ const AuthView: React.FC = () => {
               type="password" 
               value={password} 
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-3 focus:outline-none focus:border-red-600"
+              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-3 focus:outline-none focus:border-red-600 text-white"
               placeholder="••••••••"
               required
             />
@@ -104,6 +105,7 @@ const AuthView: React.FC = () => {
 
         <button 
           onClick={handleGoogleLogin}
+          type="button"
           className="w-full bg-white hover:bg-neutral-100 text-black font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
@@ -113,6 +115,7 @@ const AuthView: React.FC = () => {
         <p className="mt-8 text-center text-neutral-500 text-sm">
           {isLogin ? '계정이 없으신가요?' : '이미 계정이 있으신가요?'}
           <button 
+            type="button"
             onClick={() => setIsLogin(!isLogin)}
             className="ml-2 text-red-500 font-bold hover:underline"
           >
