@@ -1,10 +1,15 @@
 
 import { Card, CardType } from './types';
 
-// 메인 소스: GitHub Raw (가장 직접적인 경로)
-const SOURCE_A = "https://raw.githubusercontent.com/theeluwin/hwatupedia/master/images/";
-// 보조 소스: JSDelivr CDN
-const SOURCE_B = "https://cdn.jsdelivr.net/gh/theeluwin/hwatupedia@master/images/";
+/**
+ * 이미지 로딩 실패를 방지하기 위해 Proxy 서버를 사용합니다.
+ * weserv.nl은 이미지를 최적화하고 CORS 문제를 해결해주는 무료 프록시입니다.
+ */
+const GITHUB_RAW = "raw.githubusercontent.com/theeluwin/hwatupedia/master/images/";
+const PROXY_URL = "https://images.weserv.nl/?url=";
+
+const SOURCE_A = `${PROXY_URL}${GITHUB_RAW}`; // 1순위: 프록시 우회
+const SOURCE_B = "https://cdn.jsdelivr.net/gh/theeluwin/hwatupedia@master/images/"; // 2순위: CDN
 
 export const HWATU_BACK_IMAGE = `${SOURCE_A}back.png`;
 

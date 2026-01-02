@@ -8,12 +8,16 @@ import { INITIAL_DECK, HWATU_BACK_IMAGE } from '../constants';
 const HwatuCard: React.FC<{ card?: Card, isBack?: boolean, className?: string, onClick?: () => void, disabled?: boolean }> = ({ card, isBack, className, onClick, disabled }) => {
   const [imgStatus, setImgStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [currentSrc, setCurrentSrc] = useState<string>(isBack ? HWATU_BACK_IMAGE : (card?.image || ''));
+  const [useFallback, setUseFallback] = useState(false);
 
   const handleImgError = () => {
+    // 1순위 소스 실패 시 2순위(CDN)로 전환
     if (card?.altImage && currentSrc !== card.altImage) {
       setCurrentSrc(card.altImage);
     } else {
+      // 모든 이미지 소스 실패 시 그래픽(CSS) 카드로 전환
       setImgStatus('error');
+      setUseFallback(true);
     }
   };
 
@@ -23,13 +27,15 @@ const HwatuCard: React.FC<{ card?: Card, isBack?: boolean, className?: string, o
         <img 
           src={currentSrc} 
           alt="back" 
-          className="w-full h-full object-cover" 
-          onError={() => setImgStatus('error')}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${imgStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
+          onError={handleImgError}
           onLoad={() => setImgStatus('success')}
         />
-        {imgStatus === 'error' && (
-          <div className="absolute inset-0 flex items-center justify-center font-black text-white/20 text-[10px] rotate-45 select-none">
-            MATGO
+        {(imgStatus === 'error' || useFallback) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#c0392b]">
+            <div className="w-full h-full border-2 border-white/10 flex items-center justify-center">
+              <span className="font-black text-white/20 text-[10px] rotate-45">MATGO</span>
+            </div>
           </div>
         )}
       </div>
@@ -46,54 +52,51 @@ const HwatuCard: React.FC<{ card?: Card, isBack?: boolean, className?: string, o
     <button 
       onClick={onClick} 
       disabled={disabled}
-      className={`relative ${className} hwatu-card-shadow rounded-[3px] border border-black/20 bg-white overflow-hidden transition-all transform ${disabled ? 'opacity-50 grayscale' : 'hover:z-10 hover:scale-105 active:scale-95'}`}
+      className={`relative ${className} hwatu-card-shadow rounded-[3px] border border-black/20 bg-white overflow-hidden transition-all transform ${disabled ? 'opacity-50 grayscale' : 'hover:z-20 hover:scale-110 active:scale-95'}`}
     >
-      {/* 1. 이미지 레이어 */}
-      {imgStatus !== 'error' && (
+      {/* 이미지 레이어 */}
+      {!useFallback && (
         <img 
           src={currentSrc} 
           alt={card.name} 
-          className={`w-full h-full object-fill ${imgStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-full h-full object-fill transition-opacity duration-300 ${imgStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
           onError={handleImgError}
           onLoad={() => setImgStatus('success')}
-          crossOrigin="anonymous"
         />
       )}
 
-      {/* 2. 이미지 실패 시 고퀄리티 CSS 카드 레이어 */}
-      {imgStatus === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-between p-1 bg-white">
+      {/* 그래픽(CSS) 카드 레이어: 모든 이미지 로딩 실패 시 표시 */}
+      {(imgStatus === 'error' || useFallback) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-between p-1 bg-white select-none">
           <div className="w-full flex justify-between items-start">
              <span className="text-[14px] font-black leading-none" style={{ color: card.color }}>{card.month}</span>
-             <span className="text-[8px] font-bold opacity-40">{card.name}</span>
+             <span className="text-[7px] font-bold opacity-30 tracking-tighter">{card.name}</span>
           </div>
           
           <div className="flex-1 flex items-center justify-center">
             {card.type === 'Kwang' ? (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-600 text-white font-black text-xs shadow-sm">光</div>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center bg-red-600 text-white font-black text-[10px] shadow-sm">光</div>
             ) : card.type === 'SsangPi' ? (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-double border-red-500 text-red-600 font-black text-[10px]">쌍피</div>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-red-500 text-red-600 font-black text-[9px]">쌍피</div>
             ) : (
-              <div className="text-2xl opacity-20" style={{ color: card.color }}>
+              <div className="text-xl opacity-30" style={{ color: card.color }}>
                 {card.month === 12 ? '☂️' : card.month === 8 ? '🌙' : card.month === 3 ? '🌸' : '🎴'}
               </div>
             )}
           </div>
 
           <div className="w-full text-right">
-             <span className={`text-[10px] font-black px-1 rounded ${card.type === 'Kwang' ? 'bg-red-600 text-white' : 'text-black opacity-60'}`}>
+             <span className={`text-[9px] font-black px-1 rounded ${card.type === 'Kwang' ? 'bg-red-600 text-white' : 'text-black opacity-60'}`}>
                 {typeLabels[card.type]}
              </span>
           </div>
-          
-          {/* 하단 월 강조선 */}
-          <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: card.color, opacity: 0.3 }} />
+          <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: card.color, opacity: 0.2 }} />
         </div>
       )}
 
-      {/* 로딩 중 스피너 */}
-      {imgStatus === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-neutral-100">
+      {/* 로딩 스피너 */}
+      {imgStatus === 'loading' && !useFallback && (
+        <div className="absolute inset-0 flex items-center justify-center bg-neutral-50">
           <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
@@ -205,7 +208,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
   if (!room) return (
     <div className="h-screen flex flex-col items-center justify-center bg-[#1a3a16]">
        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4" />
-       <p className="text-white font-bold animate-pulse uppercase tracking-[0.2em]">Connecting Game Room...</p>
+       <p className="text-white font-bold animate-pulse uppercase tracking-[0.2em]">Game Synchronizing...</p>
     </div>
   );
 
@@ -218,10 +221,14 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
       {/* Main Table Area */}
       <div className="flex-1 flex flex-col p-4 relative border-r border-white/5">
         
-        {/* Opponent Section (Top) */}
+        {/* Opponent Info */}
         <div className="h-[120px] flex justify-between items-start">
-          <div className="w-1/3 flex flex-wrap gap-0.5 p-2 bg-black/20 rounded-lg min-h-[60px] content-start">
-            {opponent?.captured?.map((c, i) => <img key={i} src={c.image} className="w-5 h-8 rounded-[2px] shadow-md border border-white/10" />)}
+          <div className="w-1/3 flex flex-wrap gap-0.5 p-2 bg-black/20 rounded-lg min-h-[60px] content-start overflow-hidden">
+            {opponent?.captured?.map((c, i) => (
+               <div key={i} className="w-5 h-8 rounded-[1px] shadow-sm border border-white/5 overflow-hidden">
+                 <img src={c.image} className="w-full h-full object-fill" onError={(e) => (e.currentTarget.style.display = 'none')} />
+               </div>
+            ))}
           </div>
           <div className="flex -space-x-8 mt-2 opacity-80">
             {(opponent?.hand || Array(10).fill(0)).map((_, i) => <HwatuCard key={i} isBack className="w-12 h-18 rotate-180" />)}
@@ -233,26 +240,30 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
           </div>
         </div>
 
-        {/* Board Section (Middle) */}
+        {/* Board Section */}
         <div className="flex-1 flex items-center justify-center">
           <div className="grid grid-cols-6 gap-4 p-8 bg-black/10 rounded-[3rem] border border-white/5 shadow-inner">
             {(room.field || []).map((c) => (
               <HwatuCard key={c.id} card={c} className="w-16 h-24 animate-deal" />
             ))}
-            {room.status === 'waiting' && <div className="col-span-6 text-4xl font-black text-white/10 italic select-none">READY TO PLAY</div>}
+            {room.status === 'waiting' && <div className="col-span-6 text-4xl font-black text-white/5 italic select-none">WAITING OPPONENT</div>}
           </div>
           
           <div className="absolute right-12 top-1/2 -translate-y-1/2 flex flex-col items-center">
             <HwatuCard isBack className="w-16 h-24 shadow-[6px_6px_0_rgba(0,0,0,0.3)]" />
-            <span className="mt-3 font-black text-white/40">{room.deck?.length || 0}</span>
+            <span className="mt-3 font-black text-white/20">{room.deck?.length || 0}</span>
           </div>
         </div>
 
-        {/* My Section (Bottom) */}
+        {/* My Section */}
         <div className="h-[250px] flex flex-col justify-end">
            <div className="flex justify-between items-end gap-6 mb-4">
               <div className="w-72 bg-black/40 p-3 rounded-2xl border border-white/10 shadow-2xl h-40 overflow-y-auto scrollbar-hide flex flex-wrap gap-1 content-start">
-                 {me.captured?.map((c, i) => <img key={i} src={c.image} className="w-6 h-9 rounded-[2px] shadow-md border border-white/10" />)}
+                 {me.captured?.map((c, i) => (
+                    <div key={i} className="w-6 h-9 rounded-[1px] shadow-md border border-white/5 overflow-hidden">
+                      <img src={c.image} className="w-full h-full object-fill" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                    </div>
+                 ))}
               </div>
 
               <div className="flex-1 flex justify-center items-end px-4 gap-2">
@@ -271,7 +282,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
                  <div className="score-badge px-8 py-2 rounded-full text-4xl font-black italic shadow-2xl inline-block mb-4">
                     {me.score}점
                  </div>
-                 <div className={`px-4 py-2 rounded-xl text-sm font-black text-center ${room.turn === user.uid ? 'bg-blue-600 animate-pulse border border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white/5 opacity-50'}`}>
+                 <div className={`px-4 py-2 rounded-xl text-sm font-black text-center ${room.turn === user.uid ? 'bg-blue-600 animate-pulse border border-blue-400' : 'bg-white/5 opacity-50'}`}>
                     {room.turn === user.uid ? '나의 차례' : '상대 차례'}
                  </div>
               </div>
@@ -279,48 +290,31 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         </div>
       </div>
 
-      {/* Sidebar (Right) */}
+      {/* Sidebar */}
       <div className="w-[200px] hud-panel p-6 flex flex-col gap-6 shadow-2xl bg-black/40 z-50">
         <div className="text-center">
-           <h1 className="text-3xl font-black italic text-red-600 tracking-tighter leading-none drop-shadow-md">MATGO</h1>
+           <h1 className="text-3xl font-black italic text-red-600 tracking-tighter leading-none">MATGO</h1>
            <span className="text-[10px] font-bold text-white/30 uppercase tracking-[0.4em]">Master Pro</span>
         </div>
 
-        <div className="bg-black/40 rounded-2xl p-4 border border-white/5 flex flex-col gap-4">
-           <span className="text-xs font-black text-yellow-500 uppercase tracking-widest border-b border-yellow-500/20 pb-2">Mission</span>
-           <div className="h-24 flex items-center justify-center border-2 border-dashed border-white/5 rounded-xl bg-black/20">
-              <span className="text-[10px] text-white/10 font-bold text-center">ACTIVE MISSION<br/>EMPTY</span>
+        <div className="bg-black/40 rounded-2xl p-4 border border-white/5 flex flex-col gap-2">
+           <span className="text-xs font-black text-yellow-500 uppercase tracking-widest border-b border-yellow-500/10 pb-2 mb-2">Players</span>
+           <div className="flex items-center gap-2 mb-2">
+              <img src={opponent?.photo || 'https://ui-avatars.com/api/?name=W'} className="w-8 h-8 rounded-lg border border-red-600 opacity-60" />
+              <span className="text-xs truncate opacity-60">{opponent?.name || 'Wait...'}</span>
            </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-           <div className="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
-              <img src={opponent?.photo || 'https://ui-avatars.com/api/?name=W'} className="w-10 h-10 rounded-lg border-2 border-red-600" />
-              <div className="flex flex-col truncate">
-                 <span className="text-[10px] font-black text-white/40 uppercase">Opponent</span>
-                 <span className="text-xs font-bold truncate">{opponent?.name || 'Waiting...'}</span>
-              </div>
-           </div>
-           <div className="flex items-center gap-3 bg-white/10 p-2 rounded-xl border border-white/10 ring-1 ring-blue-500/50">
-              <img src={me.photo} className="w-10 h-10 rounded-lg border-2 border-blue-500" />
-              <div className="flex flex-col truncate">
-                 <span className="text-[10px] font-black text-white/40 uppercase">Player (Me)</span>
-                 <span className="text-xs font-bold truncate">{me.name}</span>
-              </div>
+           <div className="flex items-center gap-2">
+              <img src={me.photo} className="w-8 h-8 rounded-lg border border-blue-500" />
+              <span className="text-xs truncate font-bold">{me.name}</span>
            </div>
         </div>
 
         <div className="mt-auto flex flex-col gap-3">
-           <button className="w-full py-4 rounded-xl bg-green-800 hover:bg-green-700 font-black text-sm shadow-xl transition active:scale-95 border border-green-700/50">이모티콘</button>
-           <button onClick={onLeave} className="w-full py-4 rounded-xl bg-neutral-900 hover:bg-red-950 font-black text-sm shadow-xl transition active:scale-95 border border-white/5">나가기</button>
+           <button onClick={onLeave} className="w-full py-4 rounded-xl bg-neutral-900 hover:bg-red-950 font-black text-sm shadow-xl transition active:scale-95 border border-white/5">방 나가기</button>
         </div>
 
         {room.status === 'waiting' && room.hostId === user.uid && opponent && (
-          <button onClick={handleStartGame} className="w-full py-8 rounded-3xl score-badge font-black text-3xl shadow-2xl animate-bounce active:scale-95 border-b-4 border-yellow-700">시작</button>
-        )}
-        
-        {room.status === 'finished' && room.hostId === user.uid && (
-          <button onClick={handleStartGame} className="w-full py-8 rounded-3xl score-badge font-black text-2xl shadow-2xl border-b-4 border-yellow-700">다시하기</button>
+          <button onClick={handleStartGame} className="w-full py-8 rounded-3xl score-badge font-black text-3xl shadow-2xl animate-bounce active:scale-95">시작</button>
         )}
       </div>
     </div>
