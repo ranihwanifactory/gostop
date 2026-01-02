@@ -11,17 +11,12 @@ interface Props {
 }
 
 const HanafudaCard: React.FC<Props> = ({ card, onClick, isHidden, isSmall, className }) => {
-  // Real Hanafuda Image mapping based on month and unique identifier
-  // Using a stable public source for Hanafuda images
   const getImageUrl = () => {
     if (isHidden) return "https://raw.githubusercontent.com/shun-shun/hanafuda/master/images/cards/back.png";
     
-    // We derive an index 1-4 for the month based on the id/name
-    const cardIndex = card.name.includes('1') ? 1 : card.name.includes('2') ? 2 : card.name.includes('3') ? 3 : 4;
     const monthStr = card.month.toString().padStart(2, '0');
-    
-    // Fallback logic for various types
-    return `https://raw.githubusercontent.com/shun-shun/hanafuda/master/images/cards/${monthStr}-${cardIndex}.png`;
+    // Use the assigned index (1-4) for the specific image within the month
+    return `https://raw.githubusercontent.com/shun-shun/hanafuda/master/images/cards/${monthStr}-${card.index}.png`;
   };
 
   return (
@@ -30,23 +25,25 @@ const HanafudaCard: React.FC<Props> = ({ card, onClick, isHidden, isSmall, class
       className={`
         ${isSmall ? 'w-10 h-16' : 'w-16 h-24'} 
         relative flex flex-col items-center justify-center
-        rounded-md overflow-hidden card-shadow
+        rounded-md overflow-hidden shadow-lg
         ${onClick ? 'cursor-pointer hover:scale-110 hover:-translate-y-2 ring-2 ring-transparent hover:ring-yellow-400' : 'cursor-default'}
-        transition-all duration-300 border border-black/20
+        transition-all duration-300 border border-black/20 bg-white
         ${className}
       `}
     >
       <img 
         src={getImageUrl()} 
-        alt={card.name} 
+        alt={card.name || 'Hanafuda Card'} 
         className="w-full h-full object-cover"
+        loading="lazy"
         onError={(e) => {
-            // Fallback if image fails
-            (e.target as HTMLImageElement).src = "https://via.placeholder.com/64x96?text=" + card.month;
+            (e.target as HTMLImageElement).src = `https://via.placeholder.com/64x96?text=${card.month}-${card.index}`;
         }}
       />
       {!isHidden && (
-         <div className="absolute top-0 left-0 bg-black/40 text-[8px] px-1 rounded-br">{card.month}월</div>
+         <div className="absolute top-0 left-0 bg-black/60 text-[8px] px-1 rounded-br text-white font-bold">
+           {card.month}
+         </div>
       )}
     </div>
   );

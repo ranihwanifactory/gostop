@@ -9,10 +9,11 @@ export enum CardType {
 export interface Card {
   id: string;
   month: number;
+  index: number; // 1 to 4 for image mapping
   type: CardType;
   points: number;
   name: string;
-  subType?: string; // e.g., 'Hong-dan', 'Cho-dan'
+  subType?: string; // Optional: 'Hong-dan', 'Cho-dan', etc.
 }
 
 export interface Player {
