@@ -1,5 +1,5 @@
 {
-  "name": "고스톱게임",
-  "description": "A high-end, real-time multiplayer Matgo (Hwatu) game featuring Firebase authentication, room management, and professional game mechanics.",
+  "name": "Traditional Korean Go-Stop Tracker",
+  "description": "A collaborative 2-3 player Go-Stop score tracking application with Firebase synchronization, featuring traditional Korean aesthetics and automated rule-based calculations.",
   "requestFramePermissions": []
 }

@@ -1,33 +1,31 @@
 
-export type CardType = 'Kwang' | 'Yul' | 'Tti' | 'Pi' | 'SsangPi';
+export type CardType = 'Gwang' | 'Ddi' | 'Yeol' | 'Pi' | 'SsangPi';
+export type DdiType = 'HongDan' | 'ChungDan' | 'ChoDan' | 'Normal';
 
-export interface Card {
-  id: number;
+export interface HwatuCard {
+  id: string;
   month: number;
   type: CardType;
-  image: string;
-  altImage?: string; // 대체 이미지 소스
-  name: string;      // 1월 송학, 3월 사쿠라 등
-  color: string;     // 월별 대표 색상
+  name: string;
+  ddiType?: DdiType;
+  isGodori?: boolean;
 }
 
-export interface Player {
+export interface PlayerState {
   uid: string;
   name: string;
-  photo: string;
-  hand: Card[];
-  captured: Card[];
+  photoURL?: string;
+  selectedCards: string[]; // Card IDs
+  goCount: number;
+  isShaken: boolean;
   score: number;
+  isWinner: boolean;
 }
 
 export interface GameRoom {
-  id: string;
-  name: string;
+  roomId: string;
   hostId: string;
-  status: 'waiting' | 'playing' | 'finished';
-  players: Record<string, Player>;
-  turn: string;
-  deck: Card[];
-  field: Card[];
-  lastUpdate: number;
+  status: 'waiting' | 'playing' | 'ended';
+  players: { [uid: string]: PlayerState };
+  playerLimit: 2 | 3;
 }

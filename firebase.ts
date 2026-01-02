@@ -1,8 +1,7 @@
 
-import { initializeApp } from 'firebase/app';
-// Fix: Use consistent single quotes and ensure clean named imports for Firebase Auth
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDJoI2d4yhRHl-jOsZMp57V41Skn8HYFa8",
