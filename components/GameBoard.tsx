@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { db } from '../firebase';
 import { ref, update, remove } from 'firebase/database';
 import { User } from 'firebase/auth';
@@ -15,26 +15,20 @@ interface GameBoardProps {
 const GameBoard: React.FC<GameBoardProps> = ({ room, user }) => {
   const players = Object.values(room.players || {}) as PlayerState[];
   const myState = room.players ? room.players[user.uid] : null;
+  const opponents = players.filter(p => p.uid !== user.uid);
   const isHost = room.hostId === user.uid;
 
-  // 플레이어 데이터가 아직 동기화되지 않았거나 방에서 나간 경우 처리
   if (!myState) {
     return (
-      <div className="flex flex-col items-center justify-center p-20 text-center">
-        <p className="text-gray-500 mb-4">대국 정보를 불러오는 중입니다...</p>
-        <button 
-          onClick={() => remove(ref(db, `rooms/${room.roomId}/players/${user.uid}`))}
-          className="text-sm text-red-600 underline"
-        >
-          로비로 돌아가기
-        </button>
+      <div className="flex flex-col items-center justify-center h-screen text-white">
+        <p className="animate-pulse">대국장에 입장 중...</p>
       </div>
     );
   }
 
   const handleExit = async () => {
     if (isHost) {
-      if (confirm("방장이 나가면 방이 사라집니다. 정말 나가시겠습니까?")) {
+      if (confirm("방장이 퇴장하면 대국이 종료됩니다. 정말 나가시겠습니까?")) {
         await remove(ref(db, `rooms/${room.roomId}`));
       }
     } else {
@@ -86,92 +80,101 @@ const GameBoard: React.FC<GameBoardProps> = ({ room, user }) => {
     });
   };
 
-  const shareRoom = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-        alert("방 주소가 복사되었습니다. 친구에게 공유하세요!");
-    });
-  };
-
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-      {/* Game Header */}
-      <div className="flex justify-between items-center hanji-texture border border-amber-300 p-3 rounded shadow-sm">
+    <div className="game-board h-screen w-full flex flex-col overflow-hidden text-white relative">
+      
+      {/* 상단바: 방 정보 및 시스템 버튼 */}
+      <div className="flex justify-between items-center p-2 bg-black/40 backdrop-blur-sm z-50">
         <div className="flex items-center gap-2">
-            <span className="bg-red-800 text-white text-xs px-2 py-1 rounded font-bold animate-pulse">LIVE</span>
-            <span className="text-sm font-semibold text-amber-900">{room.roomId.slice(-6)}번 대국실</span>
+            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold tracking-tighter">ROOM: {room.roomId.slice(-4)}</span>
         </div>
         <div className="flex gap-2">
-            <button onClick={shareRoom} className="text-xs bg-amber-100 border border-amber-300 px-3 py-1 rounded hover:bg-amber-200">초대 공유</button>
-            <button onClick={handleExit} className="text-xs bg-gray-100 border border-gray-300 px-3 py-1 rounded hover:bg-gray-200">방 나가기</button>
+            {isHost && (
+                <button onClick={resetGame} className="bg-orange-600 hover:bg-orange-500 text-[10px] px-3 py-1 rounded font-bold transition shadow-lg">새 판</button>
+            )}
+            <button onClick={handleExit} className="bg-gray-700 hover:bg-gray-600 text-[10px] px-3 py-1 rounded font-bold transition shadow-lg">나가기</button>
         </div>
       </div>
 
-      {/* Scoreboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {players.map(p => {
-          const { breakdown } = calculateScore(p.selectedCards || [], p.goCount);
-          return (
-            <div key={p.uid} className={`relative p-4 rounded-xl border-2 transition-all ${p.uid === user.uid ? 'border-red-600 bg-red-50 shadow-lg' : 'border-amber-200 bg-white'}`}>
-              {p.uid === user.uid && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">나</div>}
-              <div className="flex items-center gap-3 mb-2">
-                <img src={p.photoURL || `https://picsum.photos/seed/${p.uid}/40/40`} className="w-10 h-10 rounded-full border border-gray-300" alt={p.name} />
-                <div className="overflow-hidden">
-                  <h3 className="font-bold text-sm truncate">{p.name}</h3>
-                  <p className="text-red-700 font-bold text-xl">{p.score}점</p>
-                </div>
-              </div>
-              <div className="text-[10px] text-gray-500 flex flex-wrap gap-1 mt-2">
-                {p.goCount > 0 && <span className="bg-red-100 text-red-600 px-1 rounded">{p.goCount}고!</span>}
-                {breakdown.map((b, i) => <span key={i} className="bg-gray-100 px-1 rounded">{b}</span>)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Card Selection Tabs */}
-      <div className="bg-white rounded-xl shadow-lg border border-amber-200 overflow-hidden">
-        <div className="bg-amber-900 text-white p-3 flex justify-between items-center">
-            <h3 className="traditional-font font-bold">내 패 관리</h3>
-            <div className="flex gap-2">
-                <button onClick={handleGo} className="bg-red-600 hover:bg-red-500 text-white px-4 py-1 rounded text-sm font-bold shadow-sm transition">고!</button>
-                {isHost && <button onClick={resetGame} className="bg-amber-700 hover:bg-amber-600 text-white px-4 py-1 rounded text-sm font-bold shadow-sm transition">초기화</button>}
-            </div>
-        </div>
+      {/* 대국판 (Main Table Area) */}
+      <div className="flex-1 relative flex flex-col p-4">
         
-        <div className="p-4 overflow-y-auto max-h-[50vh]">
-            <CardGroup 
-                title="광 (Gwang)" 
-                type="Gwang" 
-                selectedCards={myState.selectedCards || []} 
-                onToggle={toggleCard} 
-            />
-            <CardGroup 
-                title="열끗 (Yeol)" 
-                type="Yeol" 
-                selectedCards={myState.selectedCards || []} 
-                onToggle={toggleCard} 
-            />
-            <CardGroup 
-                title="띠 (Ddi)" 
-                type="Ddi" 
-                selectedCards={myState.selectedCards || []} 
-                onToggle={toggleCard} 
-            />
-            <CardGroup 
-                title="피 / 쌍피 (Pi)" 
-                type={['Pi', 'SsangPi']} 
-                selectedCards={myState.selectedCards || []} 
-                onToggle={toggleCard} 
-            />
+        {/* 상단: 상대방 영역 (이미지의 위쪽 플레이어들) */}
+        <div className="flex justify-around items-start w-full">
+            {opponents.map((opp, idx) => (
+                <PlayerPanel key={opp.uid} player={opp} isMe={false} position={idx === 0 ? 'top-left' : 'top-right'} />
+            ))}
+        </div>
+
+        {/* 중앙: 바닥 패 느낌의 장식 요소 (실제 게임 기능을 위한 공간 확보) */}
+        <div className="flex-1 flex items-center justify-center pointer-events-none opacity-20">
+            <div className="grid grid-cols-4 gap-4">
+                {[1,2,3,4].map(i => <div key={i} className="w-12 h-20 border-2 border-white/20 rounded-md card-slot"></div>)}
+            </div>
+        </div>
+
+        {/* 하단: 내 상태 영역 (이미지의 아래쪽 플레이어) */}
+        <div className="w-full flex justify-center pb-2">
+            <PlayerPanel player={myState} isMe={true} position="bottom" onGo={handleGo} />
+        </div>
+
+      </div>
+
+      {/* 카드 선택 패널 (Overlay/Modal or Bottom Drawer) */}
+      <div className="bg-black/60 backdrop-blur-md p-3 border-t border-white/10 max-h-[40%] overflow-y-auto">
+        <div className="flex justify-between items-center mb-3">
+            <h4 className="text-xs font-bold text-amber-400">획득한 패 선택</h4>
+            <span className="text-[10px] text-gray-400">클릭하여 점수에 포함</span>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+            <CompactCardGroup title="광" type="Gwang" selectedCards={myState.selectedCards || []} onToggle={toggleCard} />
+            <CompactCardGroup title="열" type="Yeol" selectedCards={myState.selectedCards || []} onToggle={toggleCard} />
+            <CompactCardGroup title="띠" type="Ddi" selectedCards={myState.selectedCards || []} onToggle={toggleCard} />
+            <CompactCardGroup title="피" type={['Pi', 'SsangPi']} selectedCards={myState.selectedCards || []} onToggle={toggleCard} />
         </div>
       </div>
     </div>
   );
 };
 
-const CardGroup: React.FC<{ 
+// 플레이어 정보 패널 (이미지 스타일 적용)
+const PlayerPanel: React.FC<{ 
+    player: PlayerState, 
+    isMe: boolean, 
+    position: string,
+    onGo?: () => void 
+}> = ({ player, isMe, position, onGo }) => {
+    return (
+        <div className={`flex items-center gap-3 p-2 rounded-lg bg-black/20 border border-white/10 ${isMe ? 'w-full max-w-md' : 'w-48'}`}>
+            <div className="relative">
+                <img src={player.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.uid}`} className={`rounded-full border-2 ${isMe ? 'w-14 h-14 border-amber-400' : 'w-10 h-10 border-gray-400'}`} alt={player.name} />
+                <div className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${isMe ? 'bg-amber-500 text-black' : 'bg-gray-600 text-white'}`}>
+                    {isMe ? '본인' : '상대'}
+                </div>
+            </div>
+            
+            <div className="flex-1 overflow-hidden">
+                <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold truncate pr-2 opacity-80">{player.name}</span>
+                    {player.goCount > 0 && <span className="bg-red-600 text-[10px] px-1 rounded animate-bounce">{player.goCount}고</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                    <div className="score-badge px-3 py-0.5 rounded-full text-sm font-bold flex items-center gap-1">
+                        <span className="text-[10px] opacity-60">SCORE</span>
+                        {player.score}점
+                    </div>
+                    {isMe && onGo && (
+                        <button onClick={onGo} className="bg-red-600 hover:bg-red-500 text-[10px] px-2 py-1 rounded font-bold shadow-lg">GO!</button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 화투패 선택 그룹
+const CompactCardGroup: React.FC<{ 
     title: string, 
     type: CardType | CardType[], 
     selectedCards: string[], 
@@ -181,38 +184,28 @@ const CardGroup: React.FC<{
     const cards = HWATU_CARDS.filter(c => types.includes(c.type));
 
     return (
-        <div className="mb-6">
-            <h4 className="text-sm font-bold text-amber-900 border-b border-amber-100 mb-3 pb-1">{title}</h4>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+        <div className="flex items-center gap-2">
+            <div className="w-8 text-[10px] font-bold text-amber-200/50">{title}</div>
+            <div className="flex-1 flex gap-1.5 overflow-x-auto py-1 scrollbar-hide">
                 {cards.map(card => {
                     const isSelected = (selectedCards || []).includes(card.id);
                     return (
                         <button
                             key={card.id}
                             onClick={() => onToggle(card.id)}
-                            className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
-                                isSelected 
-                                ? 'bg-red-50 border-red-500 scale-95 shadow-inner' 
-                                : 'bg-white border-gray-100 hover:border-amber-300'
+                            className={`flex-shrink-0 hwatu-card-ui w-7 h-11 relative flex flex-col items-center justify-center transition-all ${
+                                isSelected ? 'ring-2 ring-yellow-400 scale-110' : 'grayscale-[0.4] opacity-70'
                             }`}
                         >
-                            <span className="text-[10px] text-gray-400 mb-1">{card.month}월</span>
-                            <div className="w-10 h-14 bg-red-800 rounded-sm mb-1 flex items-center justify-center relative overflow-hidden">
-                                <div className="absolute inset-1 border border-amber-500/30"></div>
-                                {card.type === 'Gwang' && <span className="text-amber-400 text-lg font-bold">光</span>}
+                            <span className="text-[7px] text-white/50 absolute top-0.5">{card.month}</span>
+                            <div className="text-[9px] font-bold leading-tight">
+                                {card.type === 'Gwang' && <span className="text-yellow-300">光</span>}
+                                {card.type === 'Yeol' && (card.isGodori ? '🐦' : '💮')}
                                 {card.type === 'Ddi' && (
-                                    <div className={`w-1 h-8 ${
-                                        card.ddiType === 'HongDan' ? 'bg-red-500' : 
-                                        card.ddiType === 'ChungDan' ? 'bg-blue-500' : 
-                                        card.ddiType === 'ChoDan' ? 'bg-purple-500' : 'bg-amber-100'
-                                    }`}></div>
+                                    <div className={`w-0.5 h-6 ${card.ddiType === 'HongDan' ? 'bg-red-400' : card.ddiType === 'ChungDan' ? 'bg-blue-400' : 'bg-purple-400'}`}></div>
                                 )}
-                                {card.type === 'Yeol' && <span className="text-white text-xs">{card.isGodori ? '🐦' : '💮'}</span>}
-                                {(card.type === 'Pi' || card.type === 'SsangPi') && <span className="text-amber-200 text-xs">{card.type === 'SsangPi' ? '双' : '皮'}</span>}
+                                {(card.type === 'Pi' || card.type === 'SsangPi') && (card.type === 'SsangPi' ? '双' : '皮')}
                             </div>
-                            <span className={`text-[9px] font-bold leading-tight ${isSelected ? 'text-red-700' : 'text-gray-600'}`}>
-                                {card.name.split(' ')[1]}
-                            </span>
                         </button>
                     );
                 })}

@@ -4,20 +4,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>고스톱 스코어보드</title>
+    <title>고스톱 온라인</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Noto+Sans+KR', sans-serif;
-            background-color: #f4ece1;
+            background-color: #1a3a1a; /* 어두운 녹색 배경 */
+            margin: 0;
+            overflow: hidden; /* 모바일 앱 느낌을 위해 스크롤 제어 */
+        }
+        .game-board {
+            background-color: #2e7d32;
+            background-image: radial-gradient(circle, #388e3c 0%, #1b5e20 100%);
+            position: relative;
         }
         .traditional-font {
             font-family: 'Nanum Myeongjo', serif;
         }
-        .hanji-texture {
-            background-color: #fdfaf5;
-            background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+        .hwatu-card-ui {
+            background: linear-gradient(135deg, #ff1a1a 0%, #cc0000 100%);
+            border: 1.5px solid #ffcc00;
+            border-radius: 4px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+        .score-badge {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            text-shadow: 1px 1px 2px black;
+        }
+        /* 카드 슬롯 느낌 */
+        .card-slot {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
         }
     </style>
 <script type="importmap">
