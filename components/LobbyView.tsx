@@ -27,11 +27,20 @@ const LobbyView: React.FC<LobbyViewProps> = ({ user }) => {
           .map(([key, value]: [string, any]) => ({
             ...value,
             id: key,
-            players: value.players || {} // players가 없을 경우 빈 객체 보장
+            players: value.players || {}
           }));
         
-        // 대기 중인 방만 필터링 (방어적으로 status 확인)
-        setRooms(roomList.filter(r => r.status === 'waiting'));
+        // 1. 대기 중인 방 (waiting)
+        // 2. 호스트 정보가 유효한 방 (hostId가 존재하고 players 목록에 호스트가 있는 방)
+        // 위 두 조건을 만족하는 실제 방만 표시
+        const validRooms = roomList.filter(r => 
+          r.status === 'waiting' && 
+          r.hostId && 
+          r.players && 
+          r.players[r.hostId]
+        );
+        
+        setRooms(validRooms);
       } else {
         setRooms([]);
       }

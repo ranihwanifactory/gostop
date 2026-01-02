@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ref, onValue, update, runTransaction, get } from 'firebase/database';
+import { ref, onValue, update, runTransaction, get, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { GameRoom, Card, Player, CardType } from '../types';
 import { INITIAL_DECK, HWATU_BACK_IMAGE } from '../constants';
@@ -161,7 +161,11 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
     const roomRef = ref(db, `rooms/${roomId}`);
     const unsubscribe = onValue(roomRef, (snapshot) => {
       const data = snapshot.val();
-      if (!data) { onLeave(); return; }
+      if (!data) { 
+        // 방이 이미 삭제된 경우 메인으로 이동
+        onLeave(); 
+        return; 
+      }
       
       // 자신의 턴이 돌아왔을 때 소리 알림
       if (turnRef.current !== user.uid && data.turn === user.uid && data.status === 'playing') {
@@ -223,14 +227,13 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
   };
 
   const handleCardPlay = async (card: Card) => {
-    // 턴 및 중복 클릭 검증
     if (!room || room.turn !== user.uid || isProcessing || room.status !== 'playing') {
       console.warn("Not your turn or already processing");
       return;
     }
     
     setIsProcessing(true);
-    setSelectedCardId(null); // 플레이 시 선택 해제
+    setSelectedCardId(null);
     playCardSound();
     
     try {
@@ -291,16 +294,41 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
     const isMobile = window.innerWidth < 768;
     
     if (isMobile) {
-      // 모바일: 확대(Selection) -> 다시 누르면 플레이
       if (selectedCardId === card.id) {
         handleCardPlay(card);
       } else {
         setSelectedCardId(card.id);
-        playSound(500, 'sine', 0.05, 0.03); // 선택 효과음
+        playSound(500, 'sine', 0.05, 0.03);
       }
     } else {
-      // PC: 즉시 플레이
       handleCardPlay(card);
+    }
+  };
+
+  // 방 나가기 처리
+  const handleExit = async () => {
+    if (!room) {
+      onLeave();
+      return;
+    }
+
+    try {
+      if (room.hostId === user.uid) {
+        // 방장이 나가면 방 자체를 삭제
+        await remove(ref(db, `rooms/${roomId}`));
+      } else {
+        // 게스트가 나가면 플레이어 목록에서 제거
+        await remove(ref(db, `rooms/${roomId}/players/${user.uid}`));
+        // 만약 게임 중이었다면 게임을 종료 상태로 변경하거나 방장이 이기게 처리할 수 있으나,
+        // 단순하게 방을 폭파하거나 방 상태를 finished로 변경
+        if (room.status === 'playing') {
+          await update(ref(db, `rooms/${roomId}`), { status: 'finished' });
+        }
+      }
+    } catch (e) {
+      console.error("Exit failed", e);
+    } finally {
+      onLeave();
     }
   };
 
@@ -311,15 +339,15 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
     </div>
   );
 
-  const me = room.players[user.uid] || { name: '나', photo: '', score: 0, hand: [], captured: [] };
-  const opponentId = Object.keys(room.players).find(id => id !== user.uid);
+  const me = room.players?.[user.uid] || { name: '나', photo: '', score: 0, hand: [], captured: [] };
+  const opponentId = Object.keys(room.players || {}).find(id => id !== user.uid);
   const opponent = opponentId ? room.players[opponentId] : null;
   const isMyTurn = room.turn === user.uid && room.status === 'playing';
 
   return (
     <div 
       className="h-screen w-screen flex flex-col md:flex-row bg-[#1a3a16] game-board-bg overflow-hidden text-white font-sans selection:bg-none"
-      onClick={() => setSelectedCardId(null)} // 바닥 클릭 시 선택 해제
+      onClick={() => setSelectedCardId(null)}
     >
       
       {/* Mobile Header */}
@@ -327,7 +355,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
          <div className="flex items-center gap-1.5">
             <div className={`relative ${!isMyTurn ? 'ring-2 ring-red-500 rounded-full' : ''}`}>
                <img src={opponent?.photo || ''} className="w-7 h-7 rounded-full border border-white/20" />
-               {!isMyTurn && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>}
+               {!isMyTurn && room.status === 'playing' && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>}
             </div>
             <span className="score-badge px-2 rounded-full text-[10px] font-black">{opponent?.score || 0}</span>
          </div>
@@ -455,7 +483,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
         </div>
 
         <div className="mt-auto space-y-3">
-           <button onClick={onLeave} className="w-full py-4 rounded-2xl bg-neutral-950 hover:bg-red-950 border border-white/5 font-black text-xs uppercase transition shadow-xl">Abandon Match</button>
+           <button onClick={handleExit} className="w-full py-4 rounded-2xl bg-neutral-950 hover:bg-red-950 border border-white/5 font-black text-xs uppercase transition shadow-xl">Abandon Match</button>
            {room.status === 'waiting' && room.hostId === user.uid && opponent && (
               <button onClick={handleStartGame} className="w-full py-8 rounded-[2.5rem] score-badge font-black text-3xl shadow-2xl animate-bounce hover:scale-105 transition-transform active:scale-95">START</button>
            )}
@@ -484,7 +512,7 @@ const GameView: React.FC<GameViewProps> = ({ roomId, user, onLeave }) => {
                    <span className="text-neutral-500">DEFEATED 💀</span>
                  )}
               </div>
-              <button onClick={onLeave} className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-yellow-400 transition transform active:scale-95 shadow-xl">RETURN TO LOBBY</button>
+              <button onClick={handleExit} className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-yellow-400 transition transform active:scale-95 shadow-xl">RETURN TO LOBBY</button>
            </div>
         </div>
       )}
