@@ -1,64 +1,40 @@
 
-import { Card, CardType } from './types';
+import { Card } from './types';
 
-export const INITIAL_DECK: Card[] = [];
+// Simplified representation of the 48 cards. 
+// In a production app, these would be local assets or URLs to the provided images.
+export const HWATU_BACK_IMAGE = "https://raw.githubusercontent.com/jh90123/hwatu/master/images/back.png";
 
-const createCard = (month: number, index: number, type: CardType, name: string, subType?: string): Card => {
-  const card: any = {
-    id: `${month}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-    month,
-    index,
-    type,
-    points: type === CardType.GWANG ? 20 : type === CardType.TTI ? 5 : type === CardType.YUL ? 10 : 1,
-    name,
-  };
-  
-  // Firebase does not allow 'undefined'. Use null or omit the key.
-  if (subType) {
-    card.subType = subType;
-  }
-  
-  return card as Card;
-};
+const createCard = (id: number, month: number, type: any): Card => ({
+  id,
+  month,
+  type,
+  image: `https://raw.githubusercontent.com/jh90123/hwatu/master/images/${id}.png` // Assuming a standard repository mapping
+});
 
-// Populate months 1-12 (4 cards per month)
-for (let m = 1; m <= 12; m++) {
-  if (m === 1) { // Jan
-    INITIAL_DECK.push(createCard(m, 1, CardType.GWANG, '송학 광'));
-    INITIAL_DECK.push(createCard(m, 2, CardType.TTI, '송학 홍단', 'Hong-dan'));
-    INITIAL_DECK.push(createCard(m, 3, CardType.PE, '송학 피 1'));
-    INITIAL_DECK.push(createCard(m, 4, CardType.PE, '송학 피 2'));
-  } else if (m === 3) { // Mar
-    INITIAL_DECK.push(createCard(m, 1, CardType.GWANG, '벚꽃 광'));
-    INITIAL_DECK.push(createCard(m, 2, CardType.TTI, '벚꽃 홍단', 'Hong-dan'));
-    INITIAL_DECK.push(createCard(m, 3, CardType.PE, '벚꽃 피 1'));
-    INITIAL_DECK.push(createCard(m, 4, CardType.PE, '벚꽃 피 2'));
-  } else if (m === 8) { // Aug
-    INITIAL_DECK.push(createCard(m, 1, CardType.GWANG, '공산 광'));
-    INITIAL_DECK.push(createCard(m, 2, CardType.YUL, '공산 고도리'));
-    INITIAL_DECK.push(createCard(m, 3, CardType.PE, '공산 피 1'));
-    INITIAL_DECK.push(createCard(m, 4, CardType.PE, '공산 피 2'));
-  } else if (m === 11) { // Nov
-    INITIAL_DECK.push(createCard(m, 1, CardType.GWANG, '오동 광'));
-    INITIAL_DECK.push(createCard(m, 2, CardType.PE, '오동 쌍피', 'Ssang-pe'));
-    INITIAL_DECK.push(createCard(m, 3, CardType.PE, '오동 피 1'));
-    INITIAL_DECK.push(createCard(m, 4, CardType.PE, '오동 피 2'));
-  } else if (m === 12) { // Dec
-    INITIAL_DECK.push(createCard(m, 1, CardType.GWANG, '비 광'));
-    INITIAL_DECK.push(createCard(m, 2, CardType.YUL, '비 끗'));
-    INITIAL_DECK.push(createCard(m, 3, CardType.TTI, '비 띠'));
-    INITIAL_DECK.push(createCard(m, 4, CardType.PE, '비 쌍피', 'Ssang-pe'));
-  } else {
-    // Generic setup for other months
-    INITIAL_DECK.push(createCard(m, 1, m % 3 === 0 ? CardType.YUL : CardType.TTI, `${m}월 특수`));
-    INITIAL_DECK.push(createCard(m, 2, CardType.PE, `${m}월 피 1`));
-    INITIAL_DECK.push(createCard(m, 3, CardType.PE, `${m}월 피 2`));
-    INITIAL_DECK.push(createCard(m, 4, CardType.PE, `${m}월 피 3`));
-  }
-}
-
-export const MONTH_NAMES = [
-  "송학 (1월)", "매조 (2월)", "벚꽃 (3월)", "흑싸리 (4월)", 
-  "난초 (5월)", "모란 (6월)", "홍싸리 (7월)", "공산 (8월)", 
-  "국진 (9월)", "단풍 (10월)", "오동 (11월)", "비 (12월)"
+export const INITIAL_DECK: Card[] = [
+  // Month 1 (Pine)
+  createCard(1, 1, 'Kwang'), createCard(2, 1, 'Tti'), createCard(3, 1, 'Pi'), createCard(4, 1, 'Pi'),
+  // Month 2 (Plum)
+  createCard(5, 2, 'Yul'), createCard(6, 2, 'Tti'), createCard(7, 2, 'Pi'), createCard(8, 2, 'Pi'),
+  // Month 3 (Cherry)
+  createCard(9, 3, 'Kwang'), createCard(10, 3, 'Tti'), createCard(11, 3, 'Pi'), createCard(12, 3, 'Pi'),
+  // Month 4 (Wisteria)
+  createCard(13, 4, 'Yul'), createCard(14, 4, 'Tti'), createCard(15, 4, 'Pi'), createCard(16, 4, 'Pi'),
+  // Month 5 (Iris)
+  createCard(17, 5, 'Yul'), createCard(18, 5, 'Tti'), createCard(19, 5, 'Pi'), createCard(20, 5, 'Pi'),
+  // Month 6 (Peony)
+  createCard(21, 6, 'Yul'), createCard(22, 6, 'Tti'), createCard(23, 6, 'Pi'), createCard(24, 6, 'Pi'),
+  // Month 7 (Clover)
+  createCard(25, 7, 'Yul'), createCard(26, 7, 'Tti'), createCard(27, 7, 'Pi'), createCard(28, 7, 'Pi'),
+  // Month 8 (Pampas)
+  createCard(29, 8, 'Kwang'), createCard(30, 8, 'Yul'), createCard(31, 8, 'Pi'), createCard(32, 8, 'Pi'),
+  // Month 9 (Chrysanthemum)
+  createCard(33, 9, 'Yul'), createCard(34, 9, 'Tti'), createCard(35, 9, 'Pi'), createCard(36, 9, 'Pi'),
+  // Month 10 (Maple)
+  createCard(37, 10, 'Yul'), createCard(38, 10, 'Tti'), createCard(39, 10, 'Pi'), createCard(40, 10, 'Pi'),
+  // Month 11 (Paulownia)
+  createCard(41, 11, 'Kwang'), createCard(42, 11, 'SsangPi'), createCard(43, 11, 'Pi'), createCard(44, 11, 'Pi'),
+  // Month 12 (Willow)
+  createCard(45, 12, 'Kwang'), createCard(46, 12, 'Yul'), createCard(47, 12, 'Tti'), createCard(48, 12, 'Pi'),
 ];

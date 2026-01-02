@@ -1,36 +1,37 @@
 
-export enum CardType {
-  GWANG = 'GWANG', // Bright
-  TTI = 'TTI',     // Ribbon
-  YUL = 'YUL',     // Animal/Special
-  PE = 'PE'        // Junk
-}
+export type CardType = 'Kwang' | 'Yul' | 'Tti' | 'Pi' | 'SsangPi';
 
 export interface Card {
-  id: string;
+  id: number;
   month: number;
-  index: number; // 1 to 4 for image mapping
   type: CardType;
-  points: number;
-  name: string;
-  subType?: string; // Optional: 'Hong-dan', 'Cho-dan', etc.
+  image: string;
 }
 
 export interface Player {
-  id: string;
+  uid: string;
   name: string;
+  photo: string;
   hand: Card[];
   captured: Card[];
   score: number;
-  goCount: number;
 }
 
-export interface GameState {
+export interface GameRoom {
+  id: string;
+  name: string;
+  hostId: string;
+  status: 'waiting' | 'playing' | 'finished';
+  players: Record<string, Player>;
+  turn: string; // uid of current player
   deck: Card[];
-  floor: Card[];
-  players: Player[];
-  currentPlayerIndex: number;
-  isGameOver: boolean;
-  winner: string | null;
-  logs: string[];
+  field: Card[];
+  lastUpdate: number;
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL: string;
 }

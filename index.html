@@ -4,36 +4,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Go-Stop Multiplayer</title>
+    <title>Matgo Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background: radial-gradient(circle, #2d5a27 0%, #1a3c1a 100%);
+            background-color: #1a1a1a;
+            color: white;
             margin: 0;
             overflow: hidden;
-            color: white;
         }
-        .card-shadow {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        .hwatu-card {
+            aspect-ratio: 2/3;
+            transition: transform 0.2s ease-out;
         }
-        @keyframes deal-card {
-            from { transform: translateY(-100vh) rotate(20deg); opacity: 0; }
-            to { transform: translateY(0) rotate(0); opacity: 1; }
+        .hwatu-card:hover {
+            transform: translateY(-10px);
         }
-        .animate-deal { animation: deal-card 0.5s ease-out forwards; }
+        /* Traditional Green Felt Look */
+        .game-board-bg {
+            background: radial-gradient(circle, #2d5a27 0%, #1e3d1a 100%);
+        }
     </style>
-    <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-    "firebase/database": "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js",
+    "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
     "firebase/": "https://esm.sh/firebase@^12.7.0/"
   }
 }

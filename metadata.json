@@ -1,5 +1,6 @@
+
 {
-  "name": "Gemini Go-Stop Master",
-  "description": "A sophisticated 2-player Hanafuda (Go-Stop) game featuring a Gemini-powered AI opponent and real-time score tracking.",
+  "name": "Matgo Master - Pro Hwatu Duel",
+  "description": "A high-end, real-time multiplayer Matgo (Hwatu) game featuring Firebase authentication, room management, and professional game mechanics.",
   "requestFramePermissions": []
 }

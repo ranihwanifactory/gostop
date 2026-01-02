@@ -1,5 +1,5 @@
 {
-  "name": "gemini-go-stop-master",
+  "name": "matgo-master---pro-hwatu-duel",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,9 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.34.0",
-    "react-dom": "^19.2.3",
     "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "firebase": "^12.7.0"
   },
   "devDependencies": {
