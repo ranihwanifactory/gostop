@@ -1,17 +1,9 @@
 
 import { Card, CardType } from './types';
 
-/**
- * 이미지 로딩 실패를 방지하기 위해 Proxy 서버를 사용합니다.
- * weserv.nl은 이미지를 최적화하고 CORS 문제를 해결해주는 무료 프록시입니다.
- */
-const GITHUB_RAW = "raw.githubusercontent.com/theeluwin/hwatupedia/master/images/";
-const PROXY_URL = "https://images.weserv.nl/?url=";
-
-const SOURCE_A = `${PROXY_URL}${GITHUB_RAW}`; // 1순위: 프록시 우회
-const SOURCE_B = "https://cdn.jsdelivr.net/gh/theeluwin/hwatupedia@master/images/"; // 2순위: CDN
-
-export const HWATU_BACK_IMAGE = `${SOURCE_A}back.png`;
+// 프로젝트 루트에 업로드된 로컬 이미지 파일들을 사용합니다.
+// 파일명은 1.png, 2.png ... 48.png 형태입니다.
+export const HWATU_BACK_IMAGE = "back.png"; // 뒷면 이미지가 있다면 사용
 
 const MONTH_DATA: Record<number, { name: string, color: string }> = {
   1: { name: '송학', color: '#e74c3c' },
@@ -42,7 +34,7 @@ const getCardType = (month: number, index: number): CardType => {
 export const INITIAL_DECK: Card[] = [];
 for (let m = 1; m <= 12; m++) {
   for (let i = 1; i <= 4; i++) {
-    const id = (m - 1) * 4 + i;
+    const id = (m - 1) * 4 + i; // 1부터 48까지 생성
     const type = getCardType(m, i);
     INITIAL_DECK.push({
       id,
@@ -50,8 +42,9 @@ for (let m = 1; m <= 12; m++) {
       type,
       name: MONTH_DATA[m].name,
       color: MONTH_DATA[m].color,
-      image: `${SOURCE_A}${m}-${i}.png`,
-      altImage: `${SOURCE_B}${m}-${i}.png`
+      // 업로드된 파일명 규칙(1.png, 2.png...)에 맞게 경로 설정
+      image: `${id}.png`,
+      altImage: `${id}.png` 
     });
   }
 }
